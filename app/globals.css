@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+/* Design system BRYAN MULTISERVICES — 3 pôles, 3 accents (docs/06 S0-6) */
+@theme inline {
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: #0b1220;
+  --color-ink-2: #141c2e;
+  --color-ink-3: #1f2a40;
+  --color-paper: #f7f6f3;
+  --color-line: #e7e4dd;
+  --color-muted: #6b7280;
+
+  --color-gold: #c9a227;
+  --color-gold-2: #e5c55a;
+  --color-gold-soft: #f6eecf;
+
+  /* Pôles */
+  --color-auto: #c9a227;
+  --color-rent: #0e7490;
+  --color-rent-soft: #dff3f7;
+  --color-event: #be185d;
+  --color-event-soft: #fbe4ef;
+
+  --color-whatsapp: #1fa855;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em];
+  }
+  .card {
+    @apply rounded-2xl border border-line bg-white;
+  }
+  .input {
+    @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-[15px] outline-none transition placeholder:text-zinc-400 focus:border-ink focus:ring-2 focus:ring-ink/10 disabled:bg-zinc-50;
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+}
