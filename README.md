@@ -69,3 +69,7 @@ e2e/                  tests Playwright
 | 05 | [Modèle de données](docs/05-modele-de-donnees.md) |
 | 06 | [Backlog MVP](docs/06-backlog-mvp.md) |
 | 07 | [Questions client](docs/07-questions-client.md) |
+
+## Aperçu
+
+Captures de l'application (build de production, données de démonstration) : [`docs/apercu/`](docs/apercu/).
