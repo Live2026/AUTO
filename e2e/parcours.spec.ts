@@ -2,10 +2,10 @@ import { expect, test, type Page } from "@playwright/test";
 
 // Parcours clés (docs/06 — recette) sur mobile, avec les données de démonstration.
 
+/** Date locale (yyyy-mm-dd) dans le fuseau du navigateur de test (Africa/Brazzaville), à J+offset. */
 function day(offset: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + offset);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const d = new Date(Date.now() + offset * 86_400_000);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Brazzaville", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 }
 
 async function fillContact(page: Page, scope = page.locator("body")) {

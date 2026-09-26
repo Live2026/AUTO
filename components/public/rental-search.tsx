@@ -112,8 +112,8 @@ export function RentalSearch({
             }}
           >
             <option value="">Indifférente</option>
-            <option value="courte">Courte (jours)</option>
-            <option value="longue">Longue (semaine, mois)</option>
+            <option value="courte">Courte</option>
+            <option value="longue">Longue</option>
           </select>
         </Field>
         <Button type="submit" variant="rent" size="md" className="w-full">
@@ -128,8 +128,7 @@ export function RentalSearch({
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {results.map(({ vehicle, availability }) => (
           <div key={vehicle.id} className={cn("relative", availability === "unavailable" && "[&_a:first-child]:grayscale")}>
-            <RentalCard vehicle={vehicle} />
-            {availability && <AvailabilityBadge value={availability} className="absolute top-3 right-3 shadow" />}
+            <RentalCard vehicle={vehicle} badge={availability && <AvailabilityBadge value={availability} className="shadow" />} />
           </div>
         ))}
       </div>

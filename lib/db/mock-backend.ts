@@ -139,7 +139,7 @@ export class BusinessError extends Error {
   }
 }
 
-const SEED_VERSION = "2";
+const SEED_VERSION = "3";
 const uid = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
 
@@ -306,6 +306,8 @@ async function seedCrm() {
     { type: "sale", contact: 9, minutesAgo: 60 * 150, vehicleId: "veh-pajero-2019", status: "completed", message: "Vente conclue." },
     { type: "trade_in", contact: 4, minutesAgo: 60 * 26 - 5, status: "to_contact", details: { brand: "Toyota", model: "RAV4", year: 2017, mileageKm: 112000, condition: "Bon état" }, message: "Je souhaite échanger mon véhicule." },
     { type: "event", contact: 9, minutesAgo: 60 * 200, status: "completed", message: "Anniversaire 50 ans." },
+    { type: "appointment", contact: 5, minutesAgo: 95, vehicleId: "veh-gle-2022", status: "new", details: { appointmentKind: "visit", preferredSlot: "Samedi matin" }, message: "Je souhaite voir le GLE avec mon épouse." },
+    { type: "test_drive", contact: 6, minutesAgo: 60 * 3, vehicleId: "veh-rav4-2022", status: "to_contact", details: { preferredSlot: "En semaine, l'après-midi" } },
   ];
 
   const assign: Partial<Record<RequestType, string>> = catalog.settings.defaultAssignees;
@@ -353,6 +355,10 @@ async function seedCrm() {
     { id: "ev-3", requestId: "r-13", eventTypeId: "et-anniversaire", title: "50 ans Prisca", eventDate: atDay(-10).slice(0, 10), city: "Pointe-Noire", guestsCount: 90, serviceIds: ["sv-deco", "sv-animation", "sv-sono"], createdAt: ago(60 * 200) },
   ]);
 
+  await mockDb.appointments.bulkAdd([
+    { id: uid(), requestId: "r-14", kind: "visit", status: "requested", vehicleId: "veh-gle-2022", preferredSlot: "Samedi matin", createdAt: ago(95) },
+    { id: uid(), requestId: "r-15", kind: "test_drive", status: "requested", vehicleId: "veh-rav4-2022", preferredSlot: "En semaine, l'après-midi", createdAt: ago(180) },
+  ]);
   await mockDb.appointments.add({ id: uid(), requestId: "r-4", kind: "test_drive", status: "confirmed", vehicleId: "veh-tucson-2023", preferredSlot: "Samedi matin", startsAt: atDay(1, 10), endsAt: atDay(1, 11), staffId: "u-auto", createdAt: ago(60 * 20) });
 
   // Occupations véhicules

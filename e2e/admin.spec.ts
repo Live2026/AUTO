@@ -3,10 +3,10 @@ import { expect, test, type Page } from "@playwright/test";
 // Administration — écran d'ordinateur.
 test.use({ viewport: { width: 1366, height: 860 }, isMobile: false, hasTouch: false });
 
+/** Date locale (yyyy-mm-dd) dans le fuseau du navigateur de test (Africa/Brazzaville), à J+offset. */
 function day(offset: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + offset);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const d = new Date(Date.now() + offset * 86_400_000);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Brazzaville", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 }
 
 async function login(page: Page, user?: string) {
@@ -77,7 +77,7 @@ test("rendez-vous : un essai planifié bloque le véhicule, les conflits sont re
 
   await login(page);
   await page.goto("/admin/rendez-vous");
-  await page.getByRole("button", { name: "Planifier", exact: true }).first().click();
+  await page.locator("div.card > div").filter({ hasText: "Essai Client" }).getByRole("button", { name: "Planifier", exact: true }).click();
   const plan = page.getByRole("dialog");
   // Créneau déjà pris par l'essai de démonstration (demain 10h–11h) → refus
   await plan.getByLabel("Date et heure").fill(`${day(1)}T10:30`);

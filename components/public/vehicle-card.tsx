@@ -75,7 +75,7 @@ export function VehicleCard({ vehicle, href }: { vehicle: Vehicle; href?: string
   );
 }
 
-export function RentalCard({ vehicle }: { vehicle: Vehicle }) {
+export function RentalCard({ vehicle, badge }: { vehicle: Vehicle; badge?: React.ReactNode }) {
   const r = vehicle.rental!;
   return (
     <article className="group card relative flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/5">
@@ -85,6 +85,7 @@ export function RentalCard({ vehicle }: { vehicle: Vehicle }) {
           {r.withDriver && <span className="rounded-full bg-rent px-2.5 py-1 text-[11px] font-bold text-white">AVEC CHAUFFEUR</span>}
           {r.selfDrive && <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-rent">SANS CHAUFFEUR</span>}
         </div>
+        {badge && <div className="absolute bottom-3 left-3">{badge}</div>}
       </Link>
       <div className="flex flex-1 flex-col p-4">
         <h3 className="font-bold">
