@@ -171,7 +171,7 @@ export const APPOINTMENT_KIND_LABELS: Record<AppointmentKind, string> = {
 };
 
 export const ROLE_LABELS: Record<RoleId, string> = {
-  admin: "Administrateur",
+  admin: "Super administrateur",
   manager_auto: "Responsable automobile",
   manager_rental: "Responsable location",
   manager_events: "Responsable événementiel",

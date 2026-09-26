@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, CalendarHeart, Car, Clock, KeyRound, MessageCircle, ShieldCheck } from "lucide-react";
+import { BannerStrip } from "@/components/public/banner-strip";
 import { RecentlyViewed } from "@/components/public/recently-viewed";
 import { RealisationCard } from "@/components/public/realisation-card";
 import { RentalCard, VehicleCard } from "@/components/public/vehicle-card";
@@ -8,6 +9,7 @@ import { WhatsAppButton } from "@/components/public/contact-links";
 import { LinkButton, SectionHeading } from "@/components/ui";
 import {
   getActivePromotions,
+  getBanners,
   getEventTypes,
   getFeaturedVehicles,
   getRealisations,
@@ -17,13 +19,14 @@ import {
 import { whatsappNumber } from "@/lib/whatsapp";
 
 export default async function HomePage() {
-  const [settings, featured, rentals, eventTypes, realisations, promotions] = await Promise.all([
+  const [settings, featured, rentals, eventTypes, realisations, promotions, banners] = await Promise.all([
     getSettings(),
     getFeaturedVehicles(6),
     getRentalVehicles(),
     getEventTypes(),
     getRealisations(),
     getActivePromotions(),
+    getBanners(),
   ]);
 
   const jsonLd = {
@@ -85,6 +88,8 @@ export default async function HomePage() {
         </section>
       )}
 
+      <BannerStrip placement="home_hero" fallback={banners} className="container-page pt-8" />
+
       {/* AUTOMOBILE — première grande section (§13) */}
       <section className="container-page pt-14">
         <SectionHeading
@@ -115,6 +120,8 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      <BannerStrip placement="home_strip" fallback={banners} className="container-page pt-10" />
 
       <RecentlyViewed />
 

@@ -91,7 +91,7 @@ export function SectionHeading({
   title,
   description,
   action,
-  tone = "text-gold",
+  tone = "text-gold-deep",
 }: {
   eyebrow?: string;
   title: string;

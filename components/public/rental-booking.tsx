@@ -5,8 +5,10 @@ import { rememberView } from "@/lib/db/public-db";
 import { trackEvent } from "@/lib/db/mock-backend";
 import { formatDate, formatXAF } from "@/lib/format";
 import { dayInput, toIso, useBookings } from "@/lib/hooks";
-import { estimateRental, rentalAvailability } from "@/lib/rules/rental";
-import type { PublicRequestPayload, Vehicle } from "@/lib/types";
+import { applyRentalPromotion, estimateRental, rentalAvailability } from "@/lib/rules/rental";
+import { usePromotions } from "@/lib/data/live";
+import { useNow } from "@/lib/hooks";
+import type { Promotion, PublicRequestPayload, Vehicle } from "@/lib/types";
 import { fillTemplate } from "@/lib/whatsapp";
 import { Button, Field, Spinner, cn } from "../ui";
 import { AvailabilityBadge } from "./availability-badge";
@@ -21,6 +23,7 @@ export function RentalBooking({
   whatsappNumber,
   phoneNumber,
   whatsappTemplate,
+  promotions = [],
 }: {
   vehicle: Vehicle;
   title: string;
@@ -28,6 +31,7 @@ export function RentalBooking({
   whatsappNumber: string;
   phoneNumber: string;
   whatsappTemplate: string;
+  promotions?: Promotion[];
 }) {
   const rates = vehicle.rental!;
   const bookings = useBookings();
@@ -48,7 +52,13 @@ export function RentalBooking({
   const startIso = toIso(start);
   const endIso = toIso(end);
   const valid = !!startIso && !!endIso && endIso > startIso;
-  const estimate = useMemo(() => (valid ? estimateRental(rates, startIso!, endIso!, withDriver) : null), [rates, startIso, endIso, withDriver, valid]);
+  const promos = usePromotions(promotions);
+  const now = useNow();
+  const estimate = useMemo(() => {
+    if (!valid) return null;
+    const base = estimateRental(rates, startIso!, endIso!, withDriver);
+    return base && now ? applyRentalPromotion(base, promos, vehicle.id, startIso!, now).estimate : base;
+  }, [rates, startIso, endIso, withDriver, valid, promos, vehicle.id, now]);
   // eslint-disable-next-line react-hooks/purity -- disponibilité évaluée à l'instant du rendu
   const availability = bookings && valid ? rentalAvailability(vehicle, bookings, startIso!, endIso!, Date.now()) : undefined;
   const waMessage = fillTemplate(whatsappTemplate, {
@@ -133,7 +143,10 @@ export function RentalBooking({
           <>
             <ul className="mt-2 space-y-1 text-sm">
               {estimate.breakdown.map((b) => (
-                <li key={b.label} className="flex justify-between"><span className="text-muted">{b.label}</span><span>{formatXAF(b.amount)}</span></li>
+                <li key={b.label} className={b.amount < 0 ? "flex justify-between font-semibold text-emerald-700" : "flex justify-between"}>
+                  <span className={b.amount < 0 ? "" : "text-muted"}>{b.amount < 0 ? `🎁 ${b.label}` : b.label}</span>
+                  <span>{b.amount < 0 ? `–${formatXAF(-b.amount)}` : formatXAF(b.amount)}</span>
+                </li>
               ))}
             </ul>
             <p className="mt-2 flex items-baseline justify-between border-t border-rent/20 pt-2">

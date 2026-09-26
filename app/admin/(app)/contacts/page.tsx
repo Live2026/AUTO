@@ -1,13 +1,15 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { Search, ShieldOff } from "lucide-react";
+import { Pencil, Search, ShieldOff } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Forbidden, PageHeader, useStaff } from "@/components/admin/shell";
 import { Loading } from "@/components/admin/ui";
-import { Button } from "@/components/ui";
-import { anonymizeContact, listContacts, mockDb } from "@/lib/db/mock-backend";
+import { Button, Field } from "@/components/ui";
+import { Modal } from "@/components/ui/modal";
+import { BusinessError, anonymizeContact, listContacts, mockDb, updateContact } from "@/lib/db/mock-backend";
+import type { Contact } from "@/lib/types";
 import { formatDate } from "@/lib/format";
 import { can } from "@/lib/permissions";
 import { formatPhone } from "@/lib/phone";
@@ -15,6 +17,8 @@ import { formatPhone } from "@/lib/phone";
 export default function ContactsPage() {
   const user = useStaff();
   const [q, setQ] = useState("");
+  const [editing, setEditing] = useState<Contact | null>(null);
+  const [error, setError] = useState<string>();
   const contacts = useLiveQuery(() => listContacts(), []);
   const requests = useLiveQuery(() => mockDb.requests.toArray(), []);
   if (!can(user.roleId, "crm.read_all") && !can(user.roleId, "crm.write_own")) return <Forbidden />;
@@ -61,6 +65,9 @@ export default function ContactsPage() {
                   <Link key={r.id} href={`/admin/crm/${r.id}`} className="rounded-full bg-paper px-2.5 py-1 font-mono text-xs font-semibold hover:bg-line">{r.reference}</Link>
                 ))}
               </div>
+              {(can(user.roleId, "crm.write_all") || can(user.roleId, "crm.write_own")) && (
+                <Button size="sm" variant="ghost" onClick={() => setEditing(c)} aria-label={`Modifier ${c.fullName}`}><Pencil className="size-4" /></Button>
+              )}
               {can(user.roleId, "crm.write_all") && (
                 <Button
                   size="sm"
@@ -76,6 +83,32 @@ export default function ContactsPage() {
           );
         })}
       </div>
+      <Modal open={!!editing} onClose={() => setEditing(null)} title="Contact">
+        {editing && (
+          <form
+            className="space-y-4"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                await updateContact(editing, user.id);
+                setEditing(null);
+                setError(undefined);
+              } catch (err) {
+                setError(err instanceof BusinessError ? err.message : String(err));
+              }
+            }}
+          >
+            <Field label="Nom"><input className="input" value={editing.fullName} onChange={(e) => setEditing({ ...editing, fullName: e.target.value })} required /></Field>
+            <Field label="Téléphone"><input className="input" value={editing.phoneE164} onChange={(e) => setEditing({ ...editing, phoneE164: e.target.value })} /></Field>
+            <Field label="WhatsApp"><input className="input" value={editing.whatsappE164 ?? ""} onChange={(e) => setEditing({ ...editing, whatsappE164: e.target.value })} /></Field>
+            <Field label="E-mail"><input className="input" type="email" value={editing.email ?? ""} onChange={(e) => setEditing({ ...editing, email: e.target.value || undefined })} /></Field>
+            <Field label="Ville"><input className="input" value={editing.city ?? ""} onChange={(e) => setEditing({ ...editing, city: e.target.value || undefined })} /></Field>
+            <Field label="Notes internes"><textarea className="input min-h-20" value={editing.notes ?? ""} onChange={(e) => setEditing({ ...editing, notes: e.target.value || undefined })} /></Field>
+            {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
+            <Button type="submit" className="w-full">Enregistrer</Button>
+          </form>
+        )}
+      </Modal>
     </>
   );
 }

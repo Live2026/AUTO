@@ -174,6 +174,8 @@ export interface Realisation {
   serviceIds: string[];
   guests?: number;
   palette: [string, string];
+  images?: MediaImage[];
+  videoUrl?: string;
   status: PublishStatus;
 }
 
@@ -521,4 +523,48 @@ export interface PublicRequestPayload {
 export interface PublicRequestResult {
   reference: string;
   trackingToken: string;
+}
+
+// ---------- Contenus éditables (admin) ----------
+
+export type BannerPlacement = "home_hero" | "home_strip" | "vehicles" | "rental" | "events";
+
+export interface Banner {
+  id: string;
+  placement: BannerPlacement;
+  title: string;
+  subtitle?: string;
+  mediaId?: string;
+  linkUrl?: string;
+  linkLabel?: string;
+  sortOrder: number;
+  startsAt?: string;
+  endsAt?: string;
+  isActive: boolean;
+}
+
+export interface MediaAsset {
+  id: string;
+  name: string;
+  /** data URL en démo ; chemin Supabase Storage en production */
+  url: string;
+  mimeType: string;
+  width?: number;
+  height?: number;
+  sizeBytes: number;
+  alt: string;
+  tags: string[];
+  createdBy?: string;
+  createdAt: string;
+}
+
+export interface RoleDef {
+  id: RoleId;
+  label: string;
+  permissions: Permission[];
+  isSystem: boolean;
+}
+
+export interface Recommendation extends EventTypeRecommendation {
+  id: string;
 }

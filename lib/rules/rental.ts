@@ -99,3 +99,55 @@ export function estimateRental(
 export function addHours(iso: string, hours: number): string {
   return new Date(new Date(iso).getTime() + hours * 3_600_000).toISOString();
 }
+
+export interface RentalPromotionLike {
+  id: string;
+  title: string;
+  description?: string;
+  scope: "sale" | "rental" | "event";
+  kind: "percent" | "amount" | "fixed_price" | "label";
+  value?: number;
+  vehicleId?: string;
+  startsAt: string;
+  endsAt?: string;
+  isActive: boolean;
+}
+
+/**
+ * Promotions location (§45) appliquées à l'estimation.
+ * - « percent » / « amount » sur le montant véhicule ;
+ * - une promo dont le titre contient « week-end » ne s'applique qu'aux locations
+ *   commençant le vendredi ou le samedi, de 4 jours maximum ;
+ * - on retient la promotion la plus avantageuse (pas de cumul).
+ */
+export function applyRentalPromotion(
+  estimate: RentalEstimate,
+  promos: RentalPromotionLike[],
+  vehicleId: string,
+  start: string,
+  now: number,
+): { estimate: RentalEstimate; promo?: RentalPromotionLike; discount: number } {
+  const startDay = new Date(start).getDay();
+  const candidates = promos.filter((p) => {
+    if (p.scope !== "rental" || !p.isActive || (p.kind !== "percent" && p.kind !== "amount") || !p.value) return false;
+    if (Date.parse(p.startsAt) > now || (p.endsAt && Date.parse(p.endsAt) <= now)) return false;
+    if (p.vehicleId && p.vehicleId !== vehicleId) return false;
+    if (/week-?end/i.test(p.title) && !((startDay === 5 || startDay === 6) && estimate.days <= 4)) return false;
+    return true;
+  });
+  let best: { promo?: RentalPromotionLike; discount: number } = { discount: 0 };
+  for (const p of candidates) {
+    const d = p.kind === "percent" ? Math.round((estimate.vehicleAmount * p.value!) / 100) : Math.min(p.value!, estimate.vehicleAmount);
+    if (d > best.discount) best = { promo: p, discount: d };
+  }
+  if (!best.promo) return { estimate, discount: 0 };
+  return {
+    promo: best.promo,
+    discount: best.discount,
+    estimate: {
+      ...estimate,
+      total: estimate.total - best.discount,
+      breakdown: [...estimate.breakdown, { label: best.promo.title, amount: -best.discount }],
+    },
+  };
+}

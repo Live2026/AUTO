@@ -5,7 +5,7 @@ import { formatKm, formatXAF, percentOff } from "@/lib/format";
 import { FUEL_LABELS, GEARBOX_LABELS } from "@/lib/labels";
 import type { Vehicle } from "@/lib/types";
 import { cn } from "../ui";
-import { VehicleVisual } from "./vehicle-visual";
+import { VehicleMedia } from "./vehicle-media";
 import { FavoriteButton } from "./favorite-button";
 
 export function VehicleStatusBadges({ vehicle, className }: { vehicle: Vehicle; className?: string }) {
@@ -15,14 +15,14 @@ export function VehicleStatusBadges({ vehicle, className }: { vehicle: Vehicle; 
       {vehicle.status === "sold" && <span className="rounded-full bg-ink px-2.5 py-1 text-[11px] font-bold text-white">VENDU</span>}
       {vehicle.status === "reserved" && <span className="rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-ink">RÉSERVÉ</span>}
       {drop && vehicle.status !== "sold" && (
-        <span className="rounded-full bg-rose-600 px-2.5 py-1 text-[11px] font-bold text-white">
+        <span className="rounded-full bg-rose-700 px-2.5 py-1 text-[11px] font-bold text-white">
           BAISSE –{percentOff(vehicle.previousPrice!, vehicle.salePrice!)} %
         </span>
       )}
       {isNewArrival(vehicle) && vehicle.status === "available" && (
         <span className="rounded-full bg-gold px-2.5 py-1 text-[11px] font-bold text-ink">NOUVEAU</span>
       )}
-      {vehicle.condition === "new" && <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white">NEUF</span>}
+      {vehicle.condition === "new" && <span className="rounded-full bg-emerald-700 px-2.5 py-1 text-[11px] font-bold text-white">NEUF</span>}
     </div>
   );
 }
@@ -45,7 +45,7 @@ export function VehicleCard({ vehicle, href }: { vehicle: Vehicle; href?: string
   return (
     <article className="group card relative flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/5">
       <Link href={url} className="relative block aspect-[16/10] overflow-hidden bg-zinc-100">
-        <VehicleVisual bodyType={vehicle.bodyType} colorHex={vehicle.colorHex} label={vehicleTitle(vehicle)} className="transition duration-500 group-hover:scale-[1.03]" />
+        <VehicleMedia vehicleId={vehicle.id} images={vehicle.images} bodyType={vehicle.bodyType} colorHex={vehicle.colorHex} label={vehicleTitle(vehicle)} className="transition duration-500 group-hover:scale-[1.03]" />
         <VehicleStatusBadges vehicle={vehicle} className="absolute top-3 left-3" />
       </Link>
       <div className="absolute top-3 right-3">
@@ -80,7 +80,7 @@ export function RentalCard({ vehicle }: { vehicle: Vehicle }) {
   return (
     <article className="group card relative flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/5">
       <Link href={`/location/${vehicle.slug}`} className="relative block aspect-[16/10] overflow-hidden bg-zinc-100">
-        <VehicleVisual bodyType={vehicle.bodyType} colorHex={vehicle.colorHex} variant={2} label={vehicleTitle(vehicle)} className="transition duration-500 group-hover:scale-[1.03]" />
+        <VehicleMedia vehicleId={vehicle.id} images={vehicle.images} bodyType={vehicle.bodyType} colorHex={vehicle.colorHex} variant={2} label={vehicleTitle(vehicle)} className="transition duration-500 group-hover:scale-[1.03]" />
         <div className="absolute top-3 left-3 flex gap-1.5">
           {r.withDriver && <span className="rounded-full bg-rent px-2.5 py-1 text-[11px] font-bold text-white">AVEC CHAUFFEUR</span>}
           {r.selfDrive && <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-rent">SANS CHAUFFEUR</span>}

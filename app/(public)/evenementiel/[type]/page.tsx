@@ -5,6 +5,7 @@ import { WhatsAppButton } from "@/components/public/contact-links";
 import { DynamicIcon } from "@/components/public/dynamic-icon";
 import { RealisationCard } from "@/components/public/realisation-card";
 import { ServiceTile } from "@/components/public/service-grid";
+import { ShareButton } from "@/components/public/share-button";
 import { LinkButton, SectionHeading } from "@/components/ui";
 import { getEventTypeBySlug, getEventTypes, getPackages, getRealisations, getRecommendations, getServices, getSettings } from "@/lib/data/catalog";
 import { formatXAF } from "@/lib/format";
@@ -45,6 +46,7 @@ export default async function EventTypePage(props: PageProps<"/evenementiel/[typ
           <div className="mt-6 flex flex-wrap gap-3">
             <LinkButton href={`/evenementiel/creer?type=${type.slug}`} variant="event" size="lg"><Wand2 className="size-5" /> Demander un devis</LinkButton>
             <WhatsAppButton number={whatsappNumber(settings, "event")} message={fillTemplate(settings.whatsappTemplates.event, { type_evenement: type.name.toLowerCase() })} size="lg" pole="event" />
+            <ShareButton title={`${type.name} — BRYAN MULTISERVICES`} text={type.tagline} path={`/evenementiel/${type.slug}`} className="h-13 px-6" />
           </div>
         </div>
       </section>

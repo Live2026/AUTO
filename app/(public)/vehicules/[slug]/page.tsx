@@ -30,8 +30,8 @@ export async function generateMetadata(props: PageProps<"/vehicules/[slug]">): P
   const title = `${vehicleTitle(v)}${v.version ? ` ${v.version}` : ""}`;
   const price = v.priceVisible && v.salePrice ? ` — ${formatXAF(v.salePrice)}` : "";
   return {
-    title: `${title}${price}`,
-    description: `${title}, ${formatKm(v.mileageKm)}, ${FUEL_LABELS[v.fuel]}, ${GEARBOX_LABELS[v.gearbox]}. Réf. ${v.reference}. ${v.description}`.slice(0, 160),
+    title: v.seoTitle || `${title}${price}`,
+    description: v.seoDescription || `${title}, ${formatKm(v.mileageKm)}, ${FUEL_LABELS[v.fuel]}, ${GEARBOX_LABELS[v.gearbox]}. Réf. ${v.reference}. ${v.description}`.slice(0, 160),
     alternates: { canonical: `/vehicules/${v.slug}` },
     openGraph: { title: `${title}${price}`, description: v.description, type: "website" },
   };
@@ -122,7 +122,7 @@ export default async function VehiclePage(props: PageProps<"/vehicules/[slug]">)
 
       <div className="grid gap-8 lg:grid-cols-[1.35fr_1fr]">
         <div>
-          <VehicleGallery bodyType={vehicle.bodyType} colorHex={vehicle.colorHex} title={title} videoUrl={vehicle.videoUrl} />
+          <VehicleGallery vehicleId={vehicle.id} images={vehicle.images} bodyType={vehicle.bodyType} colorHex={vehicle.colorHex} title={title} videoUrl={vehicle.videoUrl} />
         </div>
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
@@ -133,7 +133,7 @@ export default async function VehiclePage(props: PageProps<"/vehicules/[slug]">)
           <div className="mt-5">
             <SalePrice vehicle={vehicle} size="lg" />
             {hasPriceDrop(vehicle) && (
-              <p className="mt-1 text-sm font-semibold text-rose-600">
+              <p className="mt-1 text-sm font-semibold text-rose-700">
                 Baisse de {formatXAF(vehicle.previousPrice! - vehicle.salePrice!)} (–{percentOff(vehicle.previousPrice!, vehicle.salePrice!)} %)
               </p>
             )}

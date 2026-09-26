@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, ClipboardList, FileCheck2, MessageCircle, Wand2 } from "lucide-react";
+import { BannerStrip } from "@/components/public/banner-strip";
 import { DynamicIcon } from "@/components/public/dynamic-icon";
 import { RealisationCard } from "@/components/public/realisation-card";
 import { LinkButton, SectionHeading } from "@/components/ui";
 import { getEventTypes, getPackages, getRealisations } from "@/lib/data/catalog";
+import { getBanners } from "@/lib/data/catalog";
 import { formatXAF } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -20,9 +22,9 @@ export default async function EventsPage() {
       <section className="relative overflow-hidden bg-event text-white">
         <div className="pointer-events-none absolute -top-24 -right-24 size-96 rounded-full bg-white/10" />
         <div className="container-page relative py-12 sm:py-16">
-          <p className="eyebrow text-white/70">Événementiel</p>
+          <p className="eyebrow text-white/90">Événementiel</p>
           <h1 className="mt-2 max-w-2xl text-3xl font-extrabold tracking-tight sm:text-5xl">Vos événements, orchestrés de A à Z</h1>
-          <p className="mt-3 max-w-xl text-white/80">Mobilité, décoration, technique, personnel : composez votre événement, nous vous envoyons un devis détaillé.</p>
+          <p className="mt-3 max-w-xl text-white">Mobilité, décoration, technique, personnel : composez votre événement, nous vous envoyons un devis détaillé.</p>
           <div className="mt-7 flex flex-wrap gap-3">
             <LinkButton href="/evenementiel/creer" variant="gold" size="lg"><Wand2 className="size-5" /> Créer mon événement</LinkButton>
             <LinkButton href="/evenementiel/prestations" variant="outline" size="lg" className="border-white/30 bg-transparent text-white hover:border-white">Nos prestations</LinkButton>
@@ -30,6 +32,7 @@ export default async function EventsPage() {
         </div>
       </section>
 
+      <BannerStrip placement="events" fallback={await getBanners()} className="container-page pt-10" />
       <section className="container-page pt-14">
         <SectionHeading eyebrow="Types d'événements" tone="text-event" title="Quel est votre projet ?" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

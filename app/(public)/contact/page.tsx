@@ -22,7 +22,7 @@ export default async function ContactPage(props: PageProps<"/contact">) {
   ] as const;
   return (
     <div className="container-page py-10">
-      <p className="eyebrow text-gold">Contact</p>
+      <p className="eyebrow text-gold-deep">Contact</p>
       <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Parlons de votre projet</h1>
       <p className="mt-2 max-w-2xl text-muted">Le plus rapide : WhatsApp. Vous pouvez aussi nous appeler ou laisser un message, un conseiller vous rappelle.</p>
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1.1fr]">
@@ -43,11 +43,22 @@ export default async function ContactPage(props: PageProps<"/contact">) {
             <p className="flex gap-2"><MapPin className="size-4 shrink-0 text-gold" />{settings.company.address}, {settings.company.city}</p>
             <p className="flex gap-2"><Clock className="size-4 shrink-0 text-gold" />{settings.company.hours}</p>
             <p className="flex gap-2"><Mail className="size-4 shrink-0 text-gold" />{settings.company.email}</p>
-            <div className="aspect-[16/9] overflow-hidden rounded-xl bg-[linear-gradient(135deg,#dfe7ef,#c7d4e2)]">
-              <div className="grid size-full place-items-center text-center text-sm text-zinc-600">
-                <p><MapPin className="mx-auto mb-1 size-6 text-rose-600" />Carte interactive (Google Maps / OpenStreetMap)<br />ajoutée à la mise en production</p>
-              </div>
+            <div className="aspect-[16/9] overflow-hidden rounded-xl bg-paper">
+              <iframe
+                title={`Plan d'accès — ${settings.company.name}`}
+                src="https://www.openstreetmap.org/export/embed.html?bbox=11.835%2C-4.800%2C11.890%2C-4.755&layer=mapnik&marker=-4.7775%2C11.8635"
+                className="size-full border-0"
+                loading="lazy"
+              />
             </div>
+            <a
+              className="inline-flex text-xs font-semibold underline"
+              target="_blank"
+              rel="noopener noreferrer"
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${settings.company.address}, ${settings.company.city}, Congo`)}`}
+            >
+              Itinéraire (Google Maps)
+            </a>
           </div>
         </div>
         <div className="card p-5 sm:p-6">

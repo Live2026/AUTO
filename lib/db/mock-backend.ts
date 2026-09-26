@@ -11,18 +11,29 @@
 
 import Dexie, { type EntityTable } from "dexie";
 import * as catalog from "../mock/catalog";
-import { can } from "../permissions";
+import { DEFAULT_ROLE_PERMISSIONS, can } from "../permissions";
 import { normalizePhone } from "../phone";
 import { businessYear, formatReference, requestPrefix } from "../rules/references";
 import { addHours, findConflict, isBlocking } from "../rules/rental";
 import { buildSnapshot } from "../rules/quote";
-import { CLOSED_STATUSES, REQUEST_TYPE_LABELS } from "../labels";
+import { CLOSED_STATUSES, REQUEST_TYPE_LABELS, ROLE_LABELS } from "../labels";
 import type {
   AnalyticsEvent,
   AnalyticsEventName,
   Appointment,
   AuditLog,
+  Banner,
   BookingKind,
+  BusinessSettings,
+  EventType,
+  MediaAsset,
+  Package,
+  Promotion,
+  Realisation,
+  Recommendation,
+  RoleDef,
+  RoleId,
+  VehicleCategory,
   BookingStatus,
   Contact,
   CrmRequest,
@@ -63,6 +74,17 @@ class MockDB extends Dexie {
   services!: EntityTable<Service, "id">;
   counters!: EntityTable<{ key: string; value: number }, "key">;
   meta!: EntityTable<{ key: string; value: string }, "key">;
+  categories!: EntityTable<VehicleCategory, "id">;
+  eventTypes!: EntityTable<EventType, "id">;
+  packages!: EntityTable<Package, "id">;
+  recommendations!: EntityTable<Recommendation, "id">;
+  realisations!: EntityTable<Realisation, "id">;
+  promotions!: EntityTable<Promotion, "id">;
+  banners!: EntityTable<Banner, "id">;
+  media!: EntityTable<MediaAsset, "id">;
+  staff!: EntityTable<StaffUser, "id">;
+  roles!: EntityTable<RoleDef, "id">;
+  settings!: EntityTable<{ key: "business"; value: BusinessSettings }, "key">;
 
   constructor() {
     super("bryan-mock");
@@ -85,6 +107,19 @@ class MockDB extends Dexie {
       counters: "key",
       meta: "key",
     });
+    this.version(2).stores({
+      categories: "id, &slug",
+      eventTypes: "id, &slug",
+      packages: "id, &slug",
+      recommendations: "id, eventTypeId",
+      realisations: "id, &slug",
+      promotions: "id, scope",
+      banners: "id, placement",
+      media: "id, createdAt",
+      staff: "id, &email",
+      roles: "id",
+      settings: "key",
+    });
   }
 }
 
@@ -104,7 +139,7 @@ export class BusinessError extends Error {
   }
 }
 
-const SEED_VERSION = "1";
+const SEED_VERSION = "2";
 const uid = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
 
@@ -128,6 +163,33 @@ async function notify(n: Omit<StaffNotification, "id" | "createdAt">) {
   await mockDb.notifications.add({ ...n, id: uid(), createdAt: nowIso() });
 }
 
+// Caches synchrones (personnel, paramètres) mis à jour par AdminShell / useLiveCatalog.
+let staffCache: StaffUser[] = catalog.staffUsers;
+export function setStaffCache(list: StaffUser[]) {
+  staffCache = list;
+}
+
+async function currentSettings(): Promise<BusinessSettings> {
+  return (await mockDb.settings.get("business"))?.value ?? catalog.settings;
+}
+
+/**
+ * Destinataires d'une nouvelle demande (§69) :
+ * - le responsable affecté ;
+ * - TOUJOURS les super administrateurs (ils voient toutes les commandes) ;
+ * - si personne n'est affecté : tous ceux qui ont la permission notifications.new_requests.
+ */
+async function newRequestRecipients(req: CrmRequest): Promise<string[]> {
+  const staff = (await mockDb.staff.toArray()).filter((u) => u.isActive);
+  const ids = new Set<string>();
+  if (req.assignedTo) ids.add(req.assignedTo);
+  for (const u of staff) {
+    if (u.roleId === "admin") ids.add(u.id);
+    else if (!req.assignedTo && can(u.roleId, "notifications.new_requests")) ids.add(u.id);
+  }
+  return [...ids];
+}
+
 async function notifyNewRequest(req: CrmRequest, contact: Contact) {
   const vehicle = req.vehicleId ? await mockDb.vehicles.get(req.vehicleId) : undefined;
   const body = [
@@ -138,10 +200,7 @@ async function notifyNewRequest(req: CrmRequest, contact: Contact) {
   ]
     .filter(Boolean)
     .join("\n");
-  const recipients = req.assignedTo
-    ? [req.assignedTo]
-    : catalog.staffUsers.filter((u) => u.isActive && can(u.roleId, "notifications.new_requests")).map((u) => u.id);
-  for (const recipientId of recipients) {
+  for (const recipientId of await newRequestRecipients(req)) {
     await notify({ recipientId, kind: "new_request", title: `Nouvelle demande ${req.reference}`, body, link: `/admin/crm/${req.id}`, requestId: req.id });
   }
 }
@@ -178,6 +237,18 @@ async function seed() {
     await mockDb.vehicles.bulkPut(catalog.vehicles);
     await mockDb.drivers.bulkPut(catalog.drivers);
     await mockDb.services.bulkPut(catalog.services);
+    await mockDb.categories.bulkPut(catalog.vehicleCategories);
+    await mockDb.eventTypes.bulkPut(catalog.eventTypes);
+    await mockDb.packages.bulkPut(catalog.packages);
+    await mockDb.recommendations.bulkPut(catalog.recommendations.map((r, i) => ({ ...r, id: `rec-${i + 1}` })));
+    await mockDb.realisations.bulkPut(catalog.realisations);
+    await mockDb.promotions.bulkPut(catalog.promotions);
+    await mockDb.banners.bulkPut(catalog.banners);
+    await mockDb.staff.bulkPut(catalog.staffUsers);
+    await mockDb.roles.bulkPut(
+      (Object.keys(DEFAULT_ROLE_PERMISSIONS) as RoleId[]).map((id) => ({ id, label: ROLE_LABELS[id], permissions: DEFAULT_ROLE_PERMISSIONS[id], isSystem: true })),
+    );
+    await mockDb.settings.put({ key: "business", value: catalog.settings });
     await seedCrm();
     await seedAnalytics();
     await mockDb.meta.put({ key: "seed", value: SEED_VERSION });
@@ -452,7 +523,9 @@ export async function submitPublicRequest(p: PublicRequestPayload): Promise<Publ
       await mockDb.contacts.add(contact);
     }
 
-    const assignee = catalog.settings.defaultAssignees[p.type];
+    const bs = await currentSettings();
+    const assignee = bs.defaultAssignees[p.type];
+    const staff = await mockDb.staff.toArray();
     const req: CrmRequest = {
       id: uid(),
       reference: await nextReference(requestPrefix(p.type)),
@@ -460,7 +533,7 @@ export async function submitPublicRequest(p: PublicRequestPayload): Promise<Publ
       status: "new",
       channel: p.channel ?? "web_form",
       contactId: contact.id,
-      assignedTo: assignee && catalog.staffUsers.some((u) => u.id === assignee && u.isActive) ? assignee : undefined,
+      assignedTo: assignee && staff.some((u) => u.id === assignee && u.isActive) ? assignee : undefined,
       vehicleId: p.vehicleId,
       subject: p.subject?.trim() || undefined,
       message: p.message?.trim() || undefined,
@@ -479,7 +552,7 @@ export async function submitPublicRequest(p: PublicRequestPayload): Promise<Publ
     await logHistory(req, null);
 
     if (p.type === "event") {
-      const eventType = catalog.eventTypes.find((e) => e.slug === p.eventType && e.isActive);
+      const eventType = (await mockDb.eventTypes.toArray()).find((e) => e.slug === p.eventType && e.isActive);
       const activeServices = new Set((await mockDb.services.toArray()).filter((s) => s.isActive).map((s) => s.id));
       await mockDb.events.add({
         id: uid(),
@@ -603,6 +676,7 @@ export async function updateRequest(
 export async function addNote(requestId: string, kind: NoteKind, body: string, actorId?: string): Promise<void> {
   if (!body.trim()) throw new BusinessError("empty_note", "La note est vide.");
   await mockDb.notes.add({ id: uid(), requestId, kind, body: body.trim(), authorId: actorId, createdAt: nowIso() });
+  if (actorId && kind !== "system") await audit(actorId, "request_notes", requestId, "insert", `Note (${kind}) ajoutée`);
 }
 
 export async function createManualRequest(
@@ -662,11 +736,12 @@ export async function createBooking(
   if (input.kind === "rental" && !v.isForRent) throw new BusinessError("vehicle_not_bookable", "Véhicule non disponible à la location.");
   if (input.kind === "event" && !v.isForEvents) throw new BusinessError("vehicle_not_bookable", "Véhicule non affecté à l'événementiel.");
   if (input.kind === "test_drive" && !v.isForSale) throw new BusinessError("vehicle_not_bookable", "Essai réservé aux véhicules à vendre.");
+  const bs = await currentSettings();
   const booking: VehicleBooking = {
     ...input,
     id: uid(),
-    blockedEnd: input.kind === "rental" ? addHours(input.end, catalog.settings.rentalBufferHours) : input.end,
-    holdExpiresAt: input.status === "hold" ? addHours(nowIso(), catalog.settings.holdDurationHours) : undefined,
+    blockedEnd: input.kind === "rental" ? addHours(input.end, bs.rentalBufferHours) : input.end,
+    holdExpiresAt: input.status === "hold" ? addHours(nowIso(), bs.holdDurationHours) : undefined,
     createdAt: nowIso(),
   };
   const conflict = findConflict(await mockDb.bookings.toArray(), booking, Date.now());
@@ -759,7 +834,7 @@ export async function createQuote(requestId: string, actorId: string): Promise<s
     requestId,
     status: "draft",
     currency: "XAF",
-    taxRate: catalog.settings.quoteTaxRate,
+    taxRate: (await currentSettings()).quoteTaxRate,
     discountAmount: 0,
     feesAmount: 0,
     publicToken: uid(),
@@ -789,7 +864,7 @@ export async function sendQuote(id: string, actorId: string): Promise<Quote> {
     const q = await mockDb.quotes.get(id);
     if (!q) throw new BusinessError("not_found", "Devis introuvable.");
     if (q.items.length === 0) throw new BusinessError("quote_empty", "Ajoutez au moins une ligne.");
-    const validUntil = q.validUntil ?? new Date(Date.now() + catalog.settings.quoteValidityDays * 86_400_000).toISOString().slice(0, 10);
+    const validUntil = q.validUntil ?? new Date(Date.now() + (await currentSettings()).quoteValidityDays * 86_400_000).toISOString().slice(0, 10);
     const version = q.currentVersion + 1;
     const next: Quote = {
       ...q,
@@ -983,8 +1058,12 @@ export async function listAudit(limit = 200): Promise<AuditLog[]> {
   return mockDb.audit.orderBy("occurredAt").reverse().limit(limit).toArray();
 }
 
+export function listStaffSync(): StaffUser[] {
+  return staffCache;
+}
+
 export function staffById(id?: string): StaffUser | undefined {
-  return catalog.staffUsers.find((u) => u.id === id);
+  return staffCache.find((u) => u.id === id);
 }
 
 /** Réviser un devis envoyé : repasse en brouillon, la prochaine émission créera la version n+1 (R7). */
@@ -994,4 +1073,152 @@ export async function reviseQuote(id: string, actorId: string): Promise<void> {
   if (q.status === "accepted") throw new BusinessError("quote_locked", "Un devis accepté ne peut plus être modifié.");
   await mockDb.quotes.put({ ...q, status: "draft", updatedAt: nowIso() });
   await audit(actorId, "quotes", id, "update", `Devis ${q.reference} en révision (v${q.currentVersion + 1})`);
+}
+
+// ---------------------------------------------------------------------------
+// Contenus éditables (catalogue, marketing, médias, paramètres, personnel)
+// ---------------------------------------------------------------------------
+
+type ContentTable = "categories" | "eventTypes" | "services" | "packages" | "recommendations" | "realisations" | "promotions" | "banners";
+
+const CONTENT_LABELS: Record<ContentTable, string> = {
+  categories: "Catégorie",
+  eventTypes: "Type d'événement",
+  services: "Prestation",
+  packages: "Package",
+  recommendations: "Recommandation",
+  realisations: "Réalisation",
+  promotions: "Promotion",
+  banners: "Bannière",
+};
+
+/** Création / modification d'un contenu (équivalent : upsert Supabase + RLS). */
+export async function saveContent<T extends { id: string }>(table: ContentTable, row: T, actorId: string, label?: string): Promise<T> {
+  const t = mockDb.table(table);
+  const prev = await t.get(row.id);
+  await t.put(row);
+  await audit(actorId, table, row.id, prev ? "update" : "insert", `${CONTENT_LABELS[table]} ${label ?? ""} ${prev ? "modifié(e)" : "créé(e)"}`.replace(/\s+/g, " ").trim());
+  return row;
+}
+
+export async function deleteContent(table: ContentTable, id: string, actorId: string, label?: string): Promise<void> {
+  await mockDb.table(table).delete(id);
+  await audit(actorId, table, id, "delete", `${CONTENT_LABELS[table]} ${label ?? ""} supprimé(e)`.replace(/\s+/g, " ").trim());
+}
+
+export async function getSettings(): Promise<BusinessSettings> {
+  return (await mockDb.settings.get("business"))?.value ?? catalog.settings;
+}
+
+export async function saveSettings(value: BusinessSettings, actorId: string): Promise<void> {
+  await mockDb.settings.put({ key: "business", value });
+  await audit(actorId, "business_settings", "business", "update", "Paramètres de l'entreprise modifiés");
+}
+
+// Personnel & rôles (§42 : permissions configurables)
+export async function saveStaff(user: StaffUser, actorId: string): Promise<void> {
+  const email = user.email.trim().toLowerCase();
+  const clash = await mockDb.staff.where("email").equals(email).first();
+  if (clash && clash.id !== user.id) throw new BusinessError("email_taken", "Cet e-mail est déjà utilisé par un autre employé.");
+  if (!user.fullName.trim()) throw new BusinessError("name_required", "Le nom est obligatoire.");
+  const prev = await mockDb.staff.get(user.id);
+  if (prev?.roleId === "admin" && (user.roleId !== "admin" || !user.isActive)) {
+    const admins = (await mockDb.staff.toArray()).filter((u) => u.roleId === "admin" && u.isActive && u.id !== user.id);
+    if (admins.length === 0) throw new BusinessError("last_admin", "Impossible : il doit rester au moins un super administrateur actif.");
+  }
+  await mockDb.staff.put({ ...user, email });
+  await audit(actorId, "staff_profiles", user.id, prev ? "update" : "insert", `${prev ? "Employé modifié" : "Employé invité"} : ${user.fullName} (${ROLE_LABELS[user.roleId]}${user.isActive ? "" : ", désactivé"})`);
+}
+
+export async function saveRole(role: RoleDef, actorId: string): Promise<void> {
+  if (role.id === "admin") throw new BusinessError("locked", "Les droits du super administrateur ne sont pas modifiables.");
+  await mockDb.roles.put(role);
+  await audit(actorId, "role_permissions", role.id, "update", `Permissions du rôle ${role.label} : ${role.permissions.length} droit(s)`);
+}
+
+// Médiathèque (§49)
+export async function addMedia(input: Omit<MediaAsset, "id" | "createdAt">, actorId: string): Promise<MediaAsset> {
+  const asset: MediaAsset = { ...input, id: uid(), createdAt: nowIso(), createdBy: actorId };
+  await mockDb.media.add(asset);
+  await audit(actorId, "media_assets", asset.id, "insert", `Média ajouté : ${asset.name}`);
+  return asset;
+}
+
+export async function updateMedia(asset: MediaAsset, actorId: string): Promise<void> {
+  await mockDb.media.put(asset);
+  await audit(actorId, "media_assets", asset.id, "update", `Média modifié : ${asset.name}`);
+}
+
+export async function deleteMedia(id: string, actorId: string): Promise<void> {
+  const a = await mockDb.media.get(id);
+  await mockDb.media.delete(id);
+  await audit(actorId, "media_assets", id, "delete", `Média supprimé : ${a?.name ?? id}`);
+}
+
+// Dossier événement (§32) — modifiable après réception
+export async function updateEventDossier(id: string, patch: Partial<EventDossier>, actorId: string): Promise<void> {
+  const e = await mockDb.events.get(id);
+  if (!e) throw new BusinessError("not_found", "Dossier introuvable.");
+  await mockDb.events.put({ ...e, ...patch });
+  await audit(actorId, "events", id, "update", `Dossier événement modifié${patch.eventDate ? ` (date ${patch.eventDate})` : ""}`);
+}
+
+// Rendez-vous & essais (§18, A11)
+export async function listAppointments(): Promise<(Appointment & { request?: CrmRequest; contact?: Contact; vehicle?: Vehicle })[]> {
+  const [appointments, requests, contacts, vehicles] = await Promise.all([
+    mockDb.appointments.toArray(),
+    mockDb.requests.toArray(),
+    mockDb.contacts.toArray(),
+    mockDb.vehicles.toArray(),
+  ]);
+  return appointments
+    .map((a) => {
+      const request = requests.find((r) => r.id === a.requestId);
+      return { ...a, request, contact: contacts.find((c) => c.id === request?.contactId), vehicle: vehicles.find((v) => v.id === a.vehicleId) };
+    })
+    .sort((a, b) => (a.startsAt ?? a.createdAt).localeCompare(b.startsAt ?? b.createdAt));
+}
+
+/** Confirme un RDV ; un essai bloque le véhicule sur le créneau (R3). */
+export async function confirmAppointment(id: string, startsAt: string, durationMinutes: number, staffId: string | undefined, actorId: string): Promise<void> {
+  const a = await mockDb.appointments.get(id);
+  if (!a) throw new BusinessError("not_found", "Rendez-vous introuvable.");
+  const endsAt = new Date(new Date(startsAt).getTime() + durationMinutes * 60_000).toISOString();
+  if (a.kind === "test_drive" && a.vehicleId) {
+    const existing = await mockDb.bookings.filter((b) => b.requestId === a.requestId && b.kind === "test_drive" && b.status !== "cancelled").first();
+    if (existing) await mockDb.bookings.put({ ...existing, status: "cancelled", cancelReason: "rescheduled" });
+    await createBooking({ vehicleId: a.vehicleId, kind: "test_drive", status: "confirmed", start: startsAt, end: endsAt, requestId: a.requestId }, actorId);
+  }
+  await mockDb.appointments.put({ ...a, status: "confirmed", startsAt, endsAt, staffId });
+  await addNote(a.requestId, "system", `Rendez-vous confirmé le ${new Date(startsAt).toLocaleString("fr-FR")}`, actorId);
+  await audit(actorId, "appointments", id, "update", "Rendez-vous confirmé");
+}
+
+export async function setAppointmentStatus(id: string, status: Appointment["status"], actorId: string): Promise<void> {
+  const a = await mockDb.appointments.get(id);
+  if (!a) return;
+  await mockDb.appointments.put({ ...a, status });
+  if (status === "cancelled" || status === "no_show") {
+    const b = await mockDb.bookings.filter((x) => x.requestId === a.requestId && x.kind === "test_drive" && ["hold", "confirmed"].includes(x.status)).first();
+    if (b) await mockDb.bookings.put({ ...b, status: "cancelled", cancelReason: status });
+  }
+  if (status === "done") {
+    const b = await mockDb.bookings.filter((x) => x.requestId === a.requestId && x.kind === "test_drive" && x.status === "confirmed").first();
+    if (b) await mockDb.bookings.put({ ...b, status: "completed" });
+  }
+  await audit(actorId, "appointments", id, "update", `Rendez-vous → ${status}`);
+}
+
+/** Archivage d'une demande (pas de suppression physique, R13). */
+export async function archiveRequest(id: string, actorId: string): Promise<void> {
+  await updateRequest(id, { archivedAt: nowIso() }, actorId);
+}
+
+export async function updateContact(contact: Contact, actorId: string): Promise<void> {
+  const phone = normalizePhone(contact.phoneE164);
+  if (!phone) throw new BusinessError("invalid_phone", "Numéro de téléphone invalide.");
+  const clash = await mockDb.contacts.where("phoneE164").equals(phone).first();
+  if (clash && clash.id !== contact.id) throw new BusinessError("phone_taken", `Ce numéro appartient déjà à ${clash.fullName}.`);
+  await mockDb.contacts.put({ ...contact, phoneE164: phone, whatsappE164: normalizePhone(contact.whatsappE164) ?? undefined, updatedAt: nowIso() });
+  await audit(actorId, "contacts", contact.id, "update", `Contact modifié : ${contact.fullName}`);
 }

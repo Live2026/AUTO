@@ -165,6 +165,17 @@ export function RequestSuccess({
 
 type Extra = "slot" | "tradeIn" | "subject";
 
+/** Compression locale (1280 px, WebP) avant envoi — la data mobile coûte cher. */
+async function compressPhoto(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/webp", 0.75);
+}
+
 /** Formulaire de demande générique (intérêt, RDV, essai, rappel, contact, reprise). */
 export function RequestForm({
   type,
@@ -192,6 +203,7 @@ export function RequestForm({
   const [subject, setSubject] = useState("");
   const [slot, setSlot] = useState("");
   const [trade, setTrade] = useState({ brand: "", model: "", year: "", mileageKm: "", condition: "Bon état" });
+  const [photos, setPhotos] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [state, setState] = useState<SubmitState>({ kind: "idle" });
   const [started, setStarted] = useState(false);
@@ -202,7 +214,7 @@ export function RequestForm({
     e.preventDefault();
     const details: Record<string, unknown> = { ...(basePayload?.details ?? {}) };
     if (extras.includes("slot") && slot) details.preferredSlot = slot;
-    if (extras.includes("tradeIn")) Object.assign(details, trade, { year: Number(trade.year) || undefined, mileageKm: Number(trade.mileageKm) || undefined });
+    if (extras.includes("tradeIn")) Object.assign(details, trade, { year: Number(trade.year) || undefined, mileageKm: Number(trade.mileageKm) || undefined, photos });
     const payload: PublicRequestPayload = {
       ...basePayload,
       ...contactPayload(contact),
@@ -253,7 +265,35 @@ export function RequestForm({
               <option>À réparer</option>
             </select>
           </Field>
-          <p className="col-span-2 text-xs text-muted">Les photos pourront être envoyées au conseiller sur WhatsApp.</p>
+          <div className="col-span-2">
+            <span className="mb-1.5 block text-sm font-medium">Photos du véhicule (facultatif, 6 max.)</span>
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line p-4 text-sm font-semibold text-muted hover:border-ink/40">
+              📷 Ajouter des photos
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="sr-only"
+                onChange={async (e) => {
+                  const files = Array.from(e.target.files ?? []).slice(0, 6 - photos.length);
+                  e.target.value = "";
+                  const urls = await Promise.all(files.map((f) => compressPhoto(f)));
+                  setPhotos((p) => [...p, ...urls].slice(0, 6));
+                }}
+              />
+            </label>
+            {photos.length > 0 && (
+              <div className="mt-2 grid grid-cols-6 gap-1.5">
+                {photos.map((src, i) => (
+                  <button key={i} type="button" onClick={() => setPhotos((p) => p.filter((_, j) => j !== i))} className="relative aspect-square overflow-hidden rounded-lg" aria-label="Retirer la photo">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- aperçu local */}
+                    <img src={src} alt="" className="size-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="mt-1 text-xs text-muted">Photos compressées sur votre téléphone avant l&apos;envoi (économie de data).</p>
+          </div>
         </div>
       )}
       {extras.includes("slot") && (

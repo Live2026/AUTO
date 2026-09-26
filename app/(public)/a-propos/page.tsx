@@ -9,7 +9,7 @@ export default async function AboutPage() {
   const settings = await getSettings();
   return (
     <div className="container-page max-w-4xl py-10">
-      <p className="eyebrow text-gold">À propos</p>
+      <p className="eyebrow text-gold-deep">À propos</p>
       <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">BRYAN MULTISERVICES, des solutions — pas des formalités</h1>
       <p className="mt-4 text-lg text-zinc-700">
         Basée à {settings.company.city}, BRYAN MULTISERVICES accompagne particuliers et entreprises dans trois domaines complémentaires :

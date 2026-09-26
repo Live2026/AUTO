@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Bus, Clock, Plane, ShieldCheck, UserRound } from "lucide-react";
+import { Bus, CalendarRange, Clock, KeyRound, Plane, ShieldCheck, UserRound } from "lucide-react";
+import { BannerStrip } from "@/components/public/banner-strip";
 import { RentalSearch } from "@/components/public/rental-search";
 import { SectionHeading } from "@/components/ui";
-import { getRentalVehicles, getSettings, getVehicleCategories } from "@/lib/data/catalog";
+import { getBanners, getRentalVehicles, getSettings, getVehicleCategories } from "@/lib/data/catalog";
 
 export const metadata: Metadata = {
   title: "Location de véhicules avec ou sans chauffeur",
@@ -11,34 +12,42 @@ export const metadata: Metadata = {
   alternates: { canonical: "/location" },
 };
 
-export default async function RentalPage() {
+export default async function RentalPage(props: PageProps<"/location">) {
+  const sp = await props.searchParams;
+  const driver = sp.chauffeur === "avec" ? "with" : sp.chauffeur === "sans" ? "without" : "";
+  const duration = sp.duree === "longue" ? "longue" : sp.duree === "courte" ? "courte" : "";
   const [vehicles, categories, settings] = await Promise.all([getRentalVehicles(), getVehicleCategories("rent"), getSettings()]);
   const usedCats = categories.filter((c) => vehicles.some((v) => v.categoryId === c.id));
   return (
     <>
       <section className="bg-rent text-white">
         <div className="container-page py-10 sm:py-14">
-          <p className="eyebrow text-white/70">Location</p>
+          <p className="eyebrow text-white/90">Location</p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Louez selon vos besoins</h1>
-          <p className="mt-2 max-w-2xl text-white/80">Avec ou sans chauffeur, courte ou longue durée. Indiquez vos dates : la disponibilité est vérifiée en temps réel.</p>
-          <div className="mt-5 flex flex-wrap gap-2 text-sm">
+          <p className="mt-2 max-w-2xl text-white">Avec ou sans chauffeur, courte ou longue durée. Indiquez vos dates : la disponibilité est vérifiée en temps réel.</p>
+          <nav className="mt-5 flex flex-wrap gap-2 text-sm" aria-label="Types de location">
             {[
-              [UserRound, "Avec chauffeur"],
-              [Clock, "Courte & longue durée"],
-              [ShieldCheck, "Véhicules assurés"],
-            ].map(([I, l]) => {
+              ["/location?chauffeur=avec", UserRound, "Avec chauffeur", driver === "with"],
+              ["/location?chauffeur=sans", KeyRound, "Sans chauffeur", driver === "without"],
+              ["/location?duree=courte", Clock, "Courte durée", duration === "courte"],
+              ["/location?duree=longue", CalendarRange, "Longue durée", duration === "longue"],
+            ].map(([href, I, l, on]) => {
               const Icon = I as typeof Clock;
               return (
-                <span key={l as string} className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5"><Icon className="size-4" />{l as string}</span>
+                <Link key={href as string} href={href as string} className={on ? "inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 font-semibold text-rent" : "inline-flex items-center gap-1.5 rounded-full bg-black/20 px-3 py-1.5 hover:bg-black/30"}>
+                  <Icon className="size-4" />{l as string}
+                </Link>
               );
             })}
-          </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-white"><ShieldCheck className="size-4" />Véhicules assurés</span>
+          </nav>
         </div>
       </section>
       <div className="container-page -mt-6">
-        <RentalSearch vehicles={vehicles} categories={usedCats} cities={settings.cities} />
+        <RentalSearch key={`${driver}-${duration}`} vehicles={vehicles} categories={usedCats} cities={settings.cities} initialDriver={driver} initialDuration={duration} />
       </div>
 
+      <BannerStrip placement="rental" fallback={await getBanners()} className="container-page pt-10" />
       <section className="container-page pt-16">
         <SectionHeading eyebrow="Services de transport" tone="text-rent" title="Transferts, navettes et chauffeurs privés" description="Pour vos invités, vos délégations ou vos déplacements professionnels (§27)." />
         <div className="grid gap-3 sm:grid-cols-3">

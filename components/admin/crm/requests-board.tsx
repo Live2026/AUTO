@@ -5,11 +5,10 @@ import { Columns3, List, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { listRequests, staffById, type RequestRow } from "@/lib/db/mock-backend";
+import { listRequests, listStaffSync, staffById, type RequestRow } from "@/lib/db/mock-backend";
 import { formatRelative } from "@/lib/format";
 import { useNow } from "@/lib/hooks";
 import { CHANNEL_LABELS, PIPELINE, REQUEST_STATUS_LABELS, REQUEST_TYPE_LABELS } from "@/lib/labels";
-import { staffUsers } from "@/lib/mock/catalog";
 import { can } from "@/lib/permissions";
 import type { RequestType } from "@/lib/types";
 import { formatPhone } from "@/lib/phone";
@@ -26,14 +25,20 @@ const GROUPS: Record<Group, (r: RequestRow) => boolean> = {
   clotures: (r) => ["completed", "cancelled", "lost"].includes(r.status),
 };
 
-export function RequestsBoard() {
+/** Re-monte le tableau quand la recherche globale change (?q=). */
+export function RequestsBoardRoute() {
+  const params = useSearchParams();
+  return <RequestsBoard key={`${params.get("q") ?? ""}|${params.get("status") ?? ""}`} />;
+}
+
+function RequestsBoard() {
   const user = useStaff();
   const params = useSearchParams();
   const now = useNow();
   const [group, setGroup] = useState<Group>((params.get("status") as Group) ?? "tous");
   const [type, setType] = useState<"" | RequestType>("");
   const [assignee, setAssignee] = useState(can(user.roleId, "crm.read_all") ? "" : user.id);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(params.get("q") ?? "");
   const [view, setView] = useState<"list" | "kanban">("list");
   const [creating, setCreating] = useState(false);
   const all = useLiveQuery(() => listRequests(), []);
@@ -97,7 +102,7 @@ export function RequestsBoard() {
             <select className="input" value={assignee} onChange={(e) => setAssignee(e.target.value)}>
               <option value="">Tous les responsables</option>
               <option value="none">Non affectées</option>
-              {staffUsers.map((u) => (
+              {listStaffSync().map((u) => (
                 <option key={u.id} value={u.id}>{u.fullName}</option>
               ))}
             </select>

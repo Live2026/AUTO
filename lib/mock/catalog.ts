@@ -2,6 +2,7 @@
 // À remplacer par les requêtes Supabase (lib/data/catalog.ts) quand le projet sera branché.
 
 import type {
+  Banner,
   BusinessSettings,
   Driver,
   EventType,
@@ -683,4 +684,19 @@ export const drivers: Driver[] = [
   { id: "dr-2", fullName: "Alain Kimbembe", phone: "+242066000002", licenseNumber: "CG-PN-39214", status: "available" },
   { id: "dr-3", fullName: "Rodrigue Ngoma", phone: "+242066000003", licenseNumber: "CG-BZ-11873", status: "on_leave" },
   { id: "dr-4", fullName: "Fabrice Mbemba", phone: "+242066000004", licenseNumber: "CG-PN-50112", status: "available" },
+];
+
+export const banners: Banner[] = [
+  {
+    id: "bn-mariages",
+    placement: "home_strip",
+    title: "Saison des mariages",
+    subtitle: "Photographe offert avec le pack Mariage Prestige jusqu'au 31 décembre.",
+    linkUrl: "/evenementiel/creer?type=mariage",
+    linkLabel: "Demander un devis",
+    sortOrder: 1,
+    startsAt: "2026-09-01T00:00:00Z",
+    endsAt: "2026-12-31T23:59:59Z",
+    isActive: true,
+  },
 ];

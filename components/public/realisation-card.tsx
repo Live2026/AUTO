@@ -3,6 +3,7 @@ import { MapPin, Users } from "lucide-react";
 import { formatDate, formatNumber } from "@/lib/format";
 import type { EventType, Realisation } from "@/lib/types";
 import { DynamicIcon } from "./dynamic-icon";
+import { RealisationCover } from "./realisation-media";
 
 export function RealisationVisual({ realisation, icon, className }: { realisation: Realisation; icon?: string; className?: string }) {
   const [a, b] = realisation.palette;
@@ -18,7 +19,7 @@ export function RealisationVisual({ realisation, icon, className }: { realisatio
 export function RealisationCard({ realisation, eventType }: { realisation: Realisation; eventType?: EventType }) {
   return (
     <article className="group card relative overflow-hidden">
-      <RealisationVisual realisation={realisation} icon={eventType?.icon} className="aspect-[4/3]" />
+      <RealisationCover realisation={realisation} icon={eventType?.icon} className="aspect-[4/3] w-full" />
       <div className="p-4">
         <p className="eyebrow text-event">{eventType?.name}</p>
         <h3 className="mt-1 font-bold">

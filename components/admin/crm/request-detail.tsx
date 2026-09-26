@@ -10,8 +10,11 @@ import {
   addNote,
   assignDriver,
   createQuote,
+  archiveRequest,
   getRequestDetail,
+  getSettings,
   listDrivers,
+  listStaffSync,
   mockDb,
   staffById,
   updateBookingStatus,
@@ -27,7 +30,6 @@ import {
   PIPELINE,
   REQUEST_STATUS_LABELS,
 } from "@/lib/labels";
-import { settings, staffUsers, services as catalogServices, eventTypes } from "@/lib/mock/catalog";
 import { can } from "@/lib/permissions";
 import { formatPhone } from "@/lib/phone";
 import { estimateRental } from "@/lib/rules/rental";
@@ -36,6 +38,7 @@ import type { NoteKind, RequestStatus } from "@/lib/types";
 import { buildTelLink, buildWhatsAppLink } from "@/lib/whatsapp";
 import { Button, EmptyState, Field, buttonClass, cn } from "../../ui";
 import { Modal } from "../../ui/modal";
+import { AppointmentDialog } from "../appointment-dialog";
 import { BookingDialog } from "../ops/booking-dialog";
 import { PageHeader, useStaff } from "../shell";
 import { Loading, Panel, QuoteStatusBadge, StatusBadge, TypeBadge } from "../ui";
@@ -45,17 +48,19 @@ export function RequestDetailView({ id }: { id: string }) {
   const router = useRouter();
   const data = useLiveQuery(() => getRequestDetail(id).then((d) => d ?? null), [id]);
   const drivers = useLiveQuery(() => listDrivers(), []);
+  const refs = useLiveQuery(async () => ({ settings: await getSettings(), services: await mockDb.services.toArray(), eventTypes: await mockDb.eventTypes.toArray() }), []);
   const [noteKind, setNoteKind] = useState<NoteKind>("note");
   const [note, setNote] = useState("");
   const [lostOpen, setLostOpen] = useState(false);
-  const [lostReason, setLostReason] = useState(settings.lostReasons[0]);
+  const [lostReason, setLostReason] = useState("");
   const [bookingOpen, setBookingOpen] = useState(false);
   const [driverFor, setDriverFor] = useState<{ bookingId?: string; eventId?: string; start: string; end: string }>();
   const [driverId, setDriverId] = useState("");
   const [error, setError] = useState<string>();
   const [copied, setCopied] = useState<string>();
 
-  if (data === undefined) return <Loading />;
+  if (data === undefined || !refs) return <Loading />;
+  const { settings, services: catalogServices, eventTypes } = refs;
   if (data === null) return <EmptyState title="Demande introuvable" />;
 
   const r = data;
@@ -147,6 +152,19 @@ export function RequestDetailView({ id }: { id: string }) {
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
             <Button size="sm" variant="ghost" className="text-rose-600" onClick={() => setStatus("lost")}>Marquer perdue</Button>
             <Button size="sm" variant="ghost" onClick={() => setStatus("cancelled")}>Annuler</Button>
+            {can(user.roleId, "crm.write_all") && ["completed", "cancelled", "lost"].includes(r.status) && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={async () => {
+                  if (!confirm(`Archiver ${r.reference} ? Elle disparaîtra des listes (conservée pour l'historique).`)) return;
+                  await archiveRequest(r.id, user.id);
+                  router.push("/admin/crm");
+                }}
+              >
+                Archiver
+              </Button>
+            )}
             {can(user.roleId, "crm.write_all") && (
               <label className="ml-auto flex items-center gap-2 text-sm">
                 <UserRoundPlus className="size-4 text-muted" />
@@ -157,7 +175,7 @@ export function RequestDetailView({ id }: { id: string }) {
                   aria-label="Responsable"
                 >
                   <option value="">Non affectée</option>
-                  {staffUsers.filter((u) => u.isActive).map((u) => (
+                  {listStaffSync().filter((u) => u.isActive).map((u) => (
                     <option key={u.id} value={u.id}>{u.fullName}</option>
                   ))}
                 </select>
@@ -209,9 +227,19 @@ export function RequestDetailView({ id }: { id: string }) {
               )}
               {r.type === "trade_in" && (
                 <dl className="grid grid-cols-2 gap-3">
-                  {Object.entries(r.details).map(([k, v]) => (
-                    <Info key={k} label={k} value={String(v)} />
+                  {Object.entries(r.details).filter(([k]) => k !== "photos").map(([k, v]) => (
+                    <Info key={k} label={TRADE_LABELS[k] ?? k} value={String(v ?? "—")} />
                   ))}
+                  {Array.isArray(r.details.photos) && (r.details.photos as string[]).length > 0 && (
+                    <div className="col-span-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
+                      {(r.details.photos as string[]).map((src, i) => (
+                        <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="aspect-square overflow-hidden rounded-lg">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- photo envoyée par le client */}
+                          <img src={src} alt={`Photo ${i + 1} du véhicule proposé`} className="size-full object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </dl>
               )}
               {r.appointments.map((a) => (
@@ -365,7 +393,7 @@ export function RequestDetailView({ id }: { id: string }) {
 
       <Modal open={lostOpen} onClose={() => setLostOpen(false)} title="Marquer comme perdue">
         <Field label="Motif (obligatoire)">
-          <select className="input" value={lostReason} onChange={(e) => setLostReason(e.target.value)}>
+          <select className="input" value={lostReason || settings.lostReasons[0]} onChange={(e) => setLostReason(e.target.value)}>
             {settings.lostReasons.map((l) => (
               <option key={l}>{l}</option>
             ))}
@@ -375,7 +403,7 @@ export function RequestDetailView({ id }: { id: string }) {
           className="mt-4 w-full"
           variant="danger"
           onClick={async () => {
-            await updateRequest(r.id, { status: "lost", lostReason }, user.id);
+            await updateRequest(r.id, { status: "lost", lostReason: lostReason || settings.lostReasons[0] }, user.id);
             setLostOpen(false);
           }}
         >
@@ -427,6 +455,8 @@ export function RequestDetailView({ id }: { id: string }) {
     </>
   );
 }
+
+const TRADE_LABELS: Record<string, string> = { brand: "Marque", model: "Modèle", year: "Année", mileageKm: "Kilométrage", condition: "État", preferredSlot: "Créneau souhaité", estimate: "Estimation", days: "Jours" };
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
@@ -490,28 +520,19 @@ function BookingRow({ bookingId, onAssignDriver }: { bookingId: string; onAssign
 
 function AppointmentRow({ appointmentId, canEdit }: { appointmentId: string; canEdit: boolean }) {
   const a = useLiveQuery(() => mockDb.appointments.get(appointmentId), [appointmentId]);
-  const [when, setWhen] = useState("");
+  const [planning, setPlanning] = useState(false);
   if (!a) return null;
   return (
     <div className="rounded-xl border border-line p-3">
-      <p className="font-semibold">{APPOINTMENT_KIND_LABELS[a.kind]} — {a.status === "requested" ? "à planifier" : a.status === "confirmed" ? "confirmé" : a.status}</p>
+      <p className="font-semibold">{APPOINTMENT_KIND_LABELS[a.kind]} — {a.status === "requested" ? "à planifier" : a.status === "confirmed" ? "confirmé" : a.status === "done" ? "effectué" : "clos"}</p>
       {a.preferredSlot && <p className="text-muted">Préférence client : {a.preferredSlot}</p>}
-      {a.startsAt && <p>Prévu le <strong>{formatDateTime(a.startsAt)}</strong></p>}
-      {canEdit && a.status === "requested" && (
-        <div className="mt-2 flex gap-2">
-          <input type="datetime-local" className="input h-9 py-1" value={when} onChange={(e) => setWhen(e.target.value)} aria-label="Date du rendez-vous" />
-          <Button
-            size="sm"
-            disabled={!when}
-            onClick={() => {
-              const start = new Date(when);
-              void mockDb.appointments.put({ ...a, status: "confirmed", startsAt: start.toISOString(), endsAt: new Date(start.getTime() + 3_600_000).toISOString() });
-            }}
-          >
-            Confirmer
-          </Button>
-        </div>
+      {a.startsAt && <p>Prévu le <strong>{formatDateTime(a.startsAt)}</strong>{a.staffId ? ` avec ${staffById(a.staffId)?.fullName}` : ""}</p>}
+      {canEdit && ["requested", "confirmed"].includes(a.status) && (
+        <Button size="sm" className="mt-2" variant={a.status === "requested" ? "primary" : "outline"} onClick={() => setPlanning(true)}>
+          {a.status === "requested" ? "Planifier" : "Déplacer"}
+        </Button>
       )}
+      {planning && <AppointmentDialog appointment={a} onClose={() => setPlanning(false)} />}
     </div>
   );
 }

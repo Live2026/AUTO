@@ -75,6 +75,7 @@ nouvelle → à contacter → contactée → en discussion → offre/devis envoy
 
 - Chaque changement de statut, d'affectation, ou ajout de note est **historisé automatiquement** (qui, quand, avant/après) → §70.
 - Affectation automatique à la création : au responsable du pôle (paramètre) ; sinon file « non affectées ».
+- **Notification d'une nouvelle demande** : le responsable affecté + **toujours les super administrateurs** + (si non affectée) tous les employés ayant `notifications.new_requests`. Alerte en direct dans l'admin (son, bannière, compteur dans l'onglet), notification système si autorisée, puis Web Push / e-mail en production.
 - Alerte si une demande reste `nouvelle` plus de **30 min** en heures ouvrées (paramétrable) → notification au responsable.
 - Motifs de perte (liste paramétrable) : prix, déjà acheté ailleurs, injoignable, indisponible, autre.
 

@@ -10,11 +10,13 @@
   --color-ink-3: #1f2a40;
   --color-paper: #f7f6f3;
   --color-line: #e7e4dd;
-  --color-muted: #6b7280;
+  --color-muted: #5b6270;
 
   --color-gold: #c9a227;
   --color-gold-2: #e5c55a;
   --color-gold-soft: #f6eecf;
+  /* Or foncé pour le texte sur fond clair (contraste AA) */
+  --color-gold-deep: #8a6a0a;
 
   /* Pôles */
   --color-auto: #c9a227;
@@ -23,7 +25,7 @@
   --color-event: #be185d;
   --color-event-soft: #fbe4ef;
 
-  --color-whatsapp: #1fa855;
+  --color-whatsapp: #0f7a40;
 }
 
 :root {
@@ -67,5 +69,16 @@ body {
   }
   body {
     background: white;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }

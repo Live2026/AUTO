@@ -1,18 +1,18 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowLeft, ExternalLink, ImagePlus, Info, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Images, Info, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BusinessError, getAdminVehicle, mockDb, nextVehicleReference, saveVehicle } from "@/lib/db/mock-backend";
 import { formatDateTime, formatXAF } from "@/lib/format";
 import { CONDITION_LABELS, DRIVETRAIN_LABELS, FUEL_LABELS, GEARBOX_LABELS, VEHICLE_STATUS_LABELS } from "@/lib/labels";
-import { vehicleCategories } from "@/lib/mock/catalog";
 import { can } from "@/lib/permissions";
 import type { AuditLog, BodyType, RentalRates, Vehicle } from "@/lib/types";
 import { VehicleVisual } from "../public/vehicle-visual";
 import { Button, Field, cn } from "../ui";
+import { MediaPicker, UploadButton } from "./media";
 import { QrCodeCard } from "./qr-code";
 import { Forbidden, PageHeader, useStaff } from "./shell";
 import { Loading, Tabs } from "./ui";
@@ -33,7 +33,7 @@ const EMPTY: Vehicle = {
   reference: "",
   slug: "",
   status: "draft",
-  categoryId: vehicleCategories[0].id,
+  categoryId: "cat-suv",
   isForSale: true,
   isForRent: false,
   isForEvents: false,
@@ -61,17 +61,6 @@ const EMPTY: Vehicle = {
 
 const DEFAULT_RATES: RentalRates = { dailyRate: 50000, withDriver: true, selfDrive: true, minDays: 1, cities: [] };
 
-/** Compression des photos dans le navigateur avant envoi (US4.3) — économise la data mobile. */
-async function compressImage(file: File, max = 1600): Promise<string> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL("image/webp", 0.8);
-}
-
 export function VehicleForm({ id }: { id: string }) {
   const isNew = id === "nouveau";
   const existing = useLiveQuery(() => (isNew ? Promise.resolve(null) : getAdminVehicle(id).then((v) => v ?? null)), [id, isNew]);
@@ -88,6 +77,8 @@ function VehicleEditor({ initial, isNew }: { initial: Vehicle; isNew: boolean })
   const [error, setError] = useState<string>();
   const [saved, setSaved] = useState<string>();
   const [featuresText, setFeaturesText] = useState(initial.features.join("\n"));
+  const [picker, setPicker] = useState(false);
+  const vehicleCategories = useLiveQuery(async () => (await mockDb.categories.toArray()).sort((a, b) => a.sortOrder - b.sortOrder), []) ?? [];
   const internalKey = `internal-${initial.id}`;
   const internalRow = useLiveQuery(async () => (initial.id ? await mockDb.meta.get(internalKey) : undefined), [internalKey]);
   const [internal, setInternal] = useState<{ vin?: string; plate?: string; purchasePrice?: string } | null>(null);
@@ -234,23 +225,17 @@ function VehicleEditor({ initial, isNew }: { initial: Vehicle; isNew: boolean })
 
           {step === "photos" && (
             <>
-              <label className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-line p-8 text-center hover:border-ink/40">
-                <ImagePlus className="size-8 text-muted" />
-                <span className="font-semibold">Ajouter des photos</span>
-                <span className="text-xs text-muted">Compressées automatiquement (WebP, 1600 px max) avant envoi.</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="sr-only"
-                  onChange={async (e) => {
-                    const files = Array.from(e.target.files ?? []);
-                    const urls = await Promise.all(files.map((f) => compressImage(f)));
-                    set({ images: [...v.images, ...urls.map((url) => ({ url, alt: `${v.brand} ${v.model}` }))] });
-                    e.target.value = "";
-                  }}
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border-2 border-dashed border-line p-5">
+                <UploadButton
+                  label="Téléverser des photos"
+                  tags={["véhicules"]}
+                  alt={`${v.brand} ${v.model} ${v.year}`}
+                  onUploaded={(m) => set({ images: [...v.images, ...m.map((x) => ({ url: x.url, alt: x.alt }))] })}
                 />
-              </label>
+                <Button variant="outline" size="sm" onClick={() => setPicker(true)}><Images className="size-4" /> Choisir dans la médiathèque</Button>
+                <p className="w-full text-xs text-muted">Compressées automatiquement (WebP, 1600 px) et rangées dans la médiathèque. La première photo est la photo principale.</p>
+              </div>
+              <MediaPicker open={picker} onClose={() => setPicker(false)} tags={["véhicules"]} onPick={(m) => set({ images: [...v.images, ...m.map((x) => ({ url: x.url, alt: x.alt }))] })} />
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {v.images.map((img, i) => (
                   <div key={i} className="group relative aspect-[4/3] overflow-hidden rounded-xl bg-paper">
@@ -264,7 +249,7 @@ function VehicleEditor({ initial, isNew }: { initial: Vehicle; isNew: boolean })
                   </div>
                 ))}
               </div>
-              <p className="flex gap-2 text-xs text-muted"><Info className="size-4 shrink-0" />Démo : photos stockées dans le navigateur. En production : bucket Supabase Storage « media » + transformations d&apos;image.</p>
+              <p className="flex gap-2 text-xs text-muted"><Info className="size-4 shrink-0" />Démo : photos stockées dans le navigateur (visibles sur le site dans ce navigateur). En production : Supabase Storage + transformations d&apos;image.</p>
             </>
           )}
 

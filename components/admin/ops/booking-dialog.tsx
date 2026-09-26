@@ -2,11 +2,10 @@
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
-import { BusinessError, createBooking, mockDb } from "@/lib/db/mock-backend";
+import { BusinessError, createBooking, getSettings, mockDb } from "@/lib/db/mock-backend";
 import { formatDateTime } from "@/lib/format";
 import { BOOKING_KIND_LABELS, BOOKING_STATUS_LABELS } from "@/lib/labels";
 import type { BookingKind, BookingStatus, VehicleBooking } from "@/lib/types";
-import { settings } from "@/lib/mock/catalog";
 import { Button, Field } from "../../ui";
 import { Modal } from "../../ui/modal";
 import { useStaff } from "../shell";
@@ -30,6 +29,7 @@ export function BookingDialog({
 }) {
   const user = useStaff();
   const vehicles = useLiveQuery(() => mockDb.vehicles.toArray(), []);
+  const settings = useLiveQuery(() => getSettings(), []);
   const [form, setForm] = useState({
     vehicleId: defaults?.vehicleId ?? "",
     kind: defaults?.kind ?? ("rental" as BookingKind),
@@ -90,7 +90,7 @@ export function BookingDialog({
           </Field>
           <Field label="Statut">
             <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as BookingStatus })}>
-              <option value="hold">{BOOKING_STATUS_LABELS.hold} ({settings.holdDurationHours} h)</option>
+              <option value="hold">{BOOKING_STATUS_LABELS.hold} ({settings?.holdDurationHours ?? 24} h)</option>
               <option value="confirmed">{BOOKING_STATUS_LABELS.confirmed}</option>
               <option value="in_progress">{BOOKING_STATUS_LABELS.in_progress}</option>
             </select>
@@ -108,7 +108,7 @@ export function BookingDialog({
           <Field label="Début"><input className="input" type="datetime-local" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} required /></Field>
           <Field label="Fin"><input className="input" type="datetime-local" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} required /></Field>
         </div>
-        {form.kind === "rental" && <p className="text-xs text-muted">Un tampon de {settings.rentalBufferHours} h est ajouté après chaque location (nettoyage, contrôle).</p>}
+        {form.kind === "rental" && <p className="text-xs text-muted">Un tampon de {settings?.rentalBufferHours ?? 2} h est ajouté après chaque location (nettoyage, contrôle).</p>}
         <Field label="Notes"><input className="input" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
         {error && (
           <div className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">

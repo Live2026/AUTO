@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { Check, ChevronRight, Snowflake, Users } from "lucide-react";
 import { RentalBooking } from "@/components/public/rental-booking";
 import { VehicleGallery } from "@/components/public/vehicle-gallery";
-import { getRentalVehicleBySlug, getRentalVehicles, getSettings } from "@/lib/data/catalog";
+import { getActivePromotions, getRentalVehicleBySlug, getRentalVehicles, getServices, getSettings } from "@/lib/data/catalog";
+import { DynamicIcon } from "@/components/public/dynamic-icon";
 import { formatXAF } from "@/lib/format";
 import { FUEL_LABELS, GEARBOX_LABELS } from "@/lib/labels";
 import { phoneNumber, whatsappNumber } from "@/lib/whatsapp";
@@ -28,8 +29,10 @@ export default async function RentalDetailPage(props: PageProps<"/location/[slug
   const { slug } = await props.params;
   const vehicle = await getRentalVehicleBySlug(slug);
   if (!vehicle) notFound();
-  const settings = await getSettings();
+  const [settings, promotions, services] = await Promise.all([getSettings(), getActivePromotions("rental"), getServices()]);
   const r = vehicle.rental!;
+  // Cross-selling location (R9) : services de mobilité complémentaires
+  const extras = services.filter((s) => ["sv-transfert", "sv-navette", "sv-chauffeur", "sv-voiture-maries"].includes(s.id));
   const title = `${vehicle.brand} ${vehicle.model}`;
   const rates: [string, number | undefined][] = [
     ["Jour", r.dailyRate],
@@ -46,7 +49,7 @@ export default async function RentalDetailPage(props: PageProps<"/location/[slug
       </nav>
       <div className="grid gap-8 lg:grid-cols-[1.25fr_1fr]">
         <div className="space-y-8">
-          <VehicleGallery bodyType={vehicle.bodyType} colorHex={vehicle.colorHex} title={title} />
+          <VehicleGallery vehicleId={vehicle.id} images={vehicle.images} bodyType={vehicle.bodyType} colorHex={vehicle.colorHex} title={title} />
           <div>
             <p className="eyebrow text-rent">Location {r.withDriver && r.selfDrive ? "avec ou sans chauffeur" : r.withDriver ? "avec chauffeur" : "sans chauffeur"}</p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{title}</h1>
@@ -86,6 +89,22 @@ export default async function RentalDetailPage(props: PageProps<"/location/[slug
             <h2 className="text-xl font-bold">Description</h2>
             <p className="mt-2 text-zinc-700">{vehicle.description}</p>
           </div>
+          {extras.length > 0 && (
+            <div>
+              <h2 className="text-xl font-bold">Complétez votre location</h2>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {extras.map((s) => (
+                  <Link key={s.id} href={`/contact?sujet=${encodeURIComponent(`${s.name} + location ${title}`)}`} className="card flex items-center gap-3 p-3 transition hover:border-rent/40">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rent-soft text-rent"><DynamicIcon name={s.icon} className="size-5" /></span>
+                    <span className="text-sm">
+                      <span className="block font-semibold">{s.name}</span>
+                      <span className="block text-muted">{s.priceVisible && s.basePrice ? `dès ${formatXAF(s.basePrice)} / ${s.unit}` : "sur demande"}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <RentalBooking
@@ -95,6 +114,7 @@ export default async function RentalDetailPage(props: PageProps<"/location/[slug
             whatsappNumber={whatsappNumber(settings, "rental")}
             phoneNumber={phoneNumber(settings, "rental")}
             whatsappTemplate={settings.whatsappTemplates.rental}
+            promotions={promotions}
           />
         </aside>
       </div>

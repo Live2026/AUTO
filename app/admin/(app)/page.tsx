@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { AlertTriangle, ArrowRight, CalendarHeart, Car, Inbox, KeyRound } from "lucide-react";
-import { PageHeader, useStaff } from "@/components/admin/shell";
+import { AlertTriangle, ArrowRight, CalendarDays, CalendarHeart, Car, Inbox, KeyRound, Plus } from "lucide-react";
+import { Avatar, useStaff } from "@/components/admin/shell";
 import { Loading, Panel, StatCard, StatusBadge, TypeBadge } from "@/components/admin/ui";
-import { listBookings, listEvents, listQuotes, listRequests, mockDb } from "@/lib/db/mock-backend";
-import { formatDateTime, formatRelative, formatXAF } from "@/lib/format";
+import { buttonClass } from "@/components/ui";
+import { getSettings, listBookings, listEvents, listQuotes, listRequests, mockDb } from "@/lib/db/mock-backend";
+import { formatDateLong, formatDateTime, formatRelative, formatXAF } from "@/lib/format";
+import { CHANNEL_LABELS, ROLE_LABELS } from "@/lib/labels";
 import { useNow } from "@/lib/hooks";
 import { BOOKING_KIND_COLORS, BOOKING_KIND_LABELS, BOOKING_STATUS_LABELS } from "@/lib/labels";
 import { computeQuoteTotals } from "@/lib/rules/quote";
 import { isBlocking } from "@/lib/rules/rental";
-import { settings } from "@/lib/mock/catalog";
 import { can } from "@/lib/permissions";
 
 const DAY = 86_400_000;
@@ -20,19 +21,20 @@ export default function DashboardPage() {
   const user = useStaff();
   const now = useNow();
   const data = useLiveQuery(async () => {
-    const [requests, bookings, quotes, events, vehicles, appointments] = await Promise.all([
+    const [requests, bookings, quotes, events, vehicles, appointments, settings] = await Promise.all([
       listRequests(),
       listBookings(),
       listQuotes(),
       listEvents(),
       mockDb.vehicles.toArray(),
       mockDb.appointments.toArray(),
+      getSettings(),
     ]);
-    return { requests, bookings, quotes, events, vehicles, appointments };
+    return { requests, bookings, quotes, events, vehicles, appointments, settings };
   }, []);
 
   if (!data || !now) return <Loading />;
-  const { requests, bookings, quotes, events, vehicles, appointments } = data;
+  const { requests, bookings, quotes, events, vehicles, appointments, settings } = data;
   const mine = can(user.roleId, "crm.read_all") ? requests : requests.filter((r) => r.assignedTo === user.id);
   const since30 = now - 30 * DAY;
   const open = (r: (typeof requests)[number]) => !["completed", "cancelled", "lost"].includes(r.status);
@@ -86,7 +88,35 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader title={`Bonjour ${user.fullName.split(" ")[0]} 👋`} description="Vue d'ensemble de l'activité BRYAN MULTISERVICES." />
+      {/* En-tête : qui est connecté (nom, rôle) */}
+      <section className="mb-6 overflow-hidden rounded-3xl bg-ink text-white">
+        <div className="flex flex-wrap items-center gap-4 p-5 sm:p-6 [background:radial-gradient(60%_120%_at_100%_0%,rgba(201,162,39,0.25),transparent_70%)]">
+          <Avatar user={user} size="lg" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-white/60">Bonjour,</p>
+            <h1 className="truncate text-2xl font-extrabold tracking-tight sm:text-3xl">{user.fullName}</h1>
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+              <span className={user.roleId === "admin" ? "rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-ink" : "rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-semibold"}>
+                {ROLE_LABELS[user.roleId]}
+              </span>
+              <span className="text-white/60 first-letter:uppercase">{formatDateLong(new Date(now).toISOString())}</span>
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/admin/crm?status=a-traiter" className={buttonClass("gold", "sm")}>
+              <Inbox className="size-4" /> {toHandle.length} à traiter
+            </Link>
+            {can(user.roleId, "vehicles.write") && (
+              <Link href="/admin/vehicules/nouveau" className={buttonClass("outline", "sm", "border-white/20 bg-white/5 text-white hover:border-white/50")}>
+                <Plus className="size-4" /> Véhicule
+              </Link>
+            )}
+            <Link href="/admin/calendrier" className={buttonClass("outline", "sm", "border-white/20 bg-white/5 text-white hover:border-white/50")}>
+              <CalendarDays className="size-4" /> Calendrier
+            </Link>
+          </div>
+        </div>
+      </section>
 
       {toHandle.length > 0 && (
         <Link href="/admin/crm?status=a-traiter" className="mb-6 flex items-center gap-3 rounded-2xl bg-ink p-4 text-white">
@@ -167,6 +197,25 @@ export default function DashboardPage() {
           </ul>
         </Panel>
       </div>
+
+      <Panel title="Boîte de réception — dernières demandes reçues" className="mt-6" action={<Link href="/admin/crm" className="text-sm font-semibold text-muted hover:text-ink">Toutes les demandes</Link>}>
+        <ul className="divide-y divide-line">
+          {mine.slice(0, 6).map((r) => (
+            <li key={r.id}>
+              <Link href={`/admin/crm/${r.id}`} className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-paper">
+                <span className={r.status === "new" ? "size-2.5 rounded-full bg-rose-500" : "size-2.5 rounded-full bg-line"} aria-label={r.status === "new" ? "Non traitée" : undefined} />
+                <span className="font-mono text-sm font-bold">{r.reference}</span>
+                <TypeBadge type={r.type} />
+                <span className="min-w-0 flex-1 truncate text-sm">
+                  <strong>{r.contact?.fullName}</strong>
+                  <span className="text-muted"> · {r.vehicle ? `${r.vehicle.brand} ${r.vehicle.model}` : r.subject ?? r.message ?? ""}</span>
+                </span>
+                <span className="text-xs text-muted">{CHANNEL_LABELS[r.channel]} · {formatRelative(r.createdAt, now)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Panel>
     </>
   );
 }

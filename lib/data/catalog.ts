@@ -207,3 +207,7 @@ export async function getActivePromotions(scope?: Promotion["scope"]): Promise<P
       (!p.endsAt || new Date(p.endsAt).getTime() > REFERENCE_NOW),
   );
 }
+
+export async function getBanners(): Promise<import("../types").Banner[]> {
+  return mock.banners;
+}

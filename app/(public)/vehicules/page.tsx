@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { VehicleCard } from "@/components/public/vehicle-card";
 import { VehicleFilters } from "@/components/public/vehicle-filters";
+import { BannerStrip } from "@/components/public/banner-strip";
 import { EmptyState, LinkButton } from "@/components/ui";
 import { getSaleBrands, getSaleVehicles, getVehicleCategories, type VehicleFilters as Filters } from "@/lib/data/catalog";
+import { getBanners } from "@/lib/data/catalog";
 
 export const metadata: Metadata = {
   title: "Véhicules à vendre",
@@ -31,10 +33,11 @@ export default async function VehiclesPage(props: PageProps<"/vehicules">) {
 
   return (
     <div className="container-page py-8 sm:py-12">
-      <p className="eyebrow text-gold">Vente automobile</p>
+      <p className="eyebrow text-gold-deep">Vente automobile</p>
       <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Nos véhicules</h1>
       <p className="mt-2 max-w-2xl text-muted">Tous nos véhicules sont inspectés. Un doute, une question ? Un conseiller vous répond sur WhatsApp.</p>
 
+      <BannerStrip placement="vehicles" fallback={await getBanners()} className="mt-6" />
       <div className="mt-8">
         <Suspense>
           <VehicleFilters categories={categories} brands={brands} total={vehicles.length} />

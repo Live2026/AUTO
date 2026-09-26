@@ -4,6 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Plus, QrCode, Search } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { CategoriesManager } from "@/components/admin/categories-manager";
 import { Forbidden, PageHeader, useStaff } from "@/components/admin/shell";
 import { Loading, Tabs } from "@/components/admin/ui";
 import { VehicleVisual } from "@/components/public/vehicle-visual";
@@ -25,7 +26,7 @@ const TONE: Record<VehicleStatus, string> = {
 export default function AdminVehiclesPage() {
   const user = useStaff();
   const vehicles = useLiveQuery(() => listAdminVehicles(), []);
-  const [tab, setTab] = useState<"all" | "sale" | "rent" | "events" | "draft">("all");
+  const [tab, setTab] = useState<"all" | "sale" | "rent" | "events" | "draft" | "categories">("all");
   const [q, setQ] = useState("");
   if (!can(user.roleId, "vehicles.write")) return <Forbidden />;
   if (!vehicles) return <Loading />;
@@ -54,6 +55,7 @@ export default function AdminVehiclesPage() {
             ["rent", "Flotte location", vehicles.filter((v) => v.isForRent).length],
             ["events", "Événementiel", vehicles.filter((v) => v.isForEvents).length],
             ["draft", "Brouillons", vehicles.filter((v) => v.status === "draft").length],
+            ["categories", "Catégories"],
           ]}
         />
         <label className="relative min-w-60 flex-1">
@@ -61,6 +63,7 @@ export default function AdminVehiclesPage() {
           <input className="input pl-9" placeholder="Rechercher…" value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
       </div>
+      {tab === "categories" ? <CategoriesManager /> : (
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {list.map((v) => (
           <Link key={v.id} href={`/admin/vehicules/${v.id}`} className="card flex gap-3 overflow-hidden p-3 transition hover:border-ink/30">
@@ -83,6 +86,7 @@ export default function AdminVehiclesPage() {
           </Link>
         ))}
       </div>
+      )}
       <p className="mt-6 flex items-center gap-2 text-xs text-muted"><QrCode className="size-4" /> Le QR code de chaque véhicule est disponible dans sa fiche.</p>
     </>
   );
