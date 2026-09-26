@@ -3,7 +3,7 @@
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { trackEvent } from "@/lib/db/mock-backend";
-import { dayInput, toIso, useBookings } from "@/lib/hooks";
+import { dayInput, toIso, useBookings, useHydrated } from "@/lib/hooks";
 import { rentalAvailability, type Availability } from "@/lib/rules/rental";
 import type { Vehicle, VehicleCategory } from "@/lib/types";
 import { Button, Field, cn } from "../ui";
@@ -27,15 +27,21 @@ export function RentalSearch({
   initialDuration?: Duration;
 }) {
   const bookings = useBookings();
-  const [form, setForm] = useState({
-    start: dayInput(1),
-    end: dayInput(initialDuration === "longue" ? 31 : 3),
+  const hydrated = useHydrated();
+  // Les dates par défaut dépendent du jour et du fuseau du visiteur : calculées côté navigateur uniquement.
+  const [draft, setDraft] = useState({
+    start: "",
+    end: "",
     city: "",
     category: "",
     driver: initialDriver,
     duration: initialDuration,
   });
-  const [query, setQuery] = useState(form);
+  const defaults = { start: hydrated ? dayInput(1) : "", end: hydrated ? dayInput(initialDuration === "longue" ? 31 : 3) : "" };
+  const form = { ...draft, start: draft.start || defaults.start, end: draft.end || defaults.end };
+  const setForm = (v: typeof form) => setDraft(v);
+  const [submitted, setQuery] = useState<typeof form | null>(null);
+  const query = submitted ?? form;
 
   const results = useMemo(() => {
     const start = toIso(query.start);
@@ -74,7 +80,7 @@ export function RentalSearch({
         }}
       >
         <Field label="Départ" className="lg:col-span-1">
-          <input type="date" className="input" min={dayInput(0)} value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />
+          <input type="date" className="input" min={hydrated ? dayInput(0) : undefined} value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />
         </Field>
         <Field label="Retour" error={invalid ? "Après la date de départ" : undefined}>
           <input type="date" className="input" min={form.start} value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} />
@@ -122,7 +128,8 @@ export function RentalSearch({
       </form>
 
       <p className="mt-6 mb-3 text-sm text-muted">
-        <strong className="text-ink">{results.length}</strong> véhicule{results.length > 1 ? "s" : ""} · du {new Date(`${query.start}T08:00`).toLocaleDateString("fr-FR")} au {new Date(`${query.end}T08:00`).toLocaleDateString("fr-FR")}
+        <strong className="text-ink">{results.length}</strong> véhicule{results.length > 1 ? "s" : ""}
+        {query.start && query.end && ` · du ${query.start.split("-").reverse().join("/")} au ${query.end.split("-").reverse().join("/")}`}
       </p>
       <h2 className="sr-only">Véhicules disponibles à la location</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

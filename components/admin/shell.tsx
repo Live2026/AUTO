@@ -24,6 +24,7 @@ import {
   Settings,
   UserCog,
   UserRound,
+  UsersRound,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -77,7 +78,8 @@ const NAV: NavItem[] = [
   { href: "/admin/marketing", label: "Marketing", icon: Megaphone, group: "Opérations", perm: ["marketing.write"] },
   { href: "/admin/medias", label: "Médiathèque", icon: Images, group: "Opérations", perm: ["media.write"] },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3, group: "Opérations", perm: ["analytics.read"] },
-  { href: "/admin/parametres", label: "Paramètres", icon: Settings, group: "Administration", perm: ["settings.write", "users.manage", "audit.read"] },
+  { href: "/admin/utilisateurs", label: "Utilisateurs", icon: UsersRound, group: "Administration", perm: ["users.manage"] },
+  { href: "/admin/parametres", label: "Paramètres", icon: Settings, group: "Administration", perm: ["settings.write", "audit.read"] },
 ];
 
 export function allowed(user: StaffUser, perm?: Permission | Permission[]) {
@@ -193,7 +195,9 @@ function Frame({ user, children }: { user: StaffUser; children: ReactNode }) {
                       className={cn(
                         "relative flex items-center gap-3 rounded-xl py-2 text-sm font-medium transition",
                         compact ? "justify-center px-0" : "px-3",
-                        isActive(href) ? "bg-white/10 text-white" : "text-white/65 hover:bg-white/5 hover:text-white",
+                        isActive(href)
+                          ? "bg-white/10 text-white before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-r-full before:bg-gold"
+                          : "text-white/65 hover:bg-white/5 hover:text-white",
                       )}
                     >
                       <Icon className={cn("size-[18px] shrink-0", isActive(href) && "text-gold")} />
@@ -235,7 +239,7 @@ function Frame({ user, children }: { user: StaffUser; children: ReactNode }) {
             <PanelLeftOpen className="size-4" />
           </button>
         )}
-        <div className="scrollbar-none mt-5 flex-1 overflow-y-auto">{nav(collapsed)}</div>
+        <div className="scrollbar-none mt-5 min-h-0 flex-1 overflow-y-auto">{nav(collapsed)}</div>
         <SidebarFooter user={user} compact={collapsed} />
       </aside>
 
@@ -250,7 +254,7 @@ function Frame({ user, children }: { user: StaffUser; children: ReactNode }) {
                 <X className="size-5" />
               </button>
             </div>
-            <div className="mt-5 flex-1 overflow-y-auto">{nav(false)}</div>
+            <div className="mt-5 min-h-0 flex-1 overflow-y-auto">{nav(false)}</div>
             <SidebarFooter user={user} compact={false} />
           </aside>
         </div>
@@ -392,6 +396,7 @@ function ProfileMenu({ user }: { user: StaffUser }) {
             <div className="p-1.5 text-sm">
               <MenuLink href="/admin/profil" icon={UserCog} onClick={() => setOpen(false)}>Mon profil & préférences</MenuLink>
               <MenuLink href="/admin/profil#notifications" icon={Bell} onClick={() => setOpen(false)}>Notifications de cet appareil</MenuLink>
+              {can(user.roleId, "users.manage") && <MenuLink href="/admin/utilisateurs" icon={UsersRound} onClick={() => setOpen(false)}>Utilisateurs & rôles</MenuLink>}
               {can(user.roleId, "settings.write") && <MenuLink href="/admin/parametres" icon={Settings} onClick={() => setOpen(false)}>Paramètres</MenuLink>}
               <MenuLink href="/" icon={ExternalLink} onClick={() => setOpen(false)} external>Voir le site public</MenuLink>
             </div>

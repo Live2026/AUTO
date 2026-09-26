@@ -105,20 +105,49 @@ test("marketing : une bannière créée apparaît sur l'accueil", async ({ page 
   await expect(page.getByText("Offre spéciale Toussaint")).toBeVisible();
 });
 
-test("paramètres : inviter un employé puis se connecter avec son compte", async ({ page }) => {
+test("utilisateurs : le super admin ajoute un responsable événementiel qui se connecte avec ses droits", async ({ page }) => {
   await login(page);
-  await page.goto("/admin/parametres");
-  await page.getByRole("button", { name: /Utilisateurs/ }).click();
-  await page.getByRole("button", { name: "Inviter un employé" }).click();
+  await page.locator("aside").first().getByRole("link", { name: "Utilisateurs" }).click();
+  await expect(page.getByRole("heading", { name: "Utilisateurs" })).toBeVisible();
+  await page.getByRole("button", { name: "Ajouter un utilisateur" }).first().click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Nom complet").fill("Nadia Commerciale");
+  await dialog.getByRole("button", { name: "Continuer" }).click();
+  await expect(dialog.getByText("Indiquez le nom complet")).toBeVisible();
+  await dialog.getByLabel("Nom complet").fill("Nadia Événements");
   await dialog.getByLabel("E-mail (identifiant de connexion)").fill("nadia@bryan.cg");
-  await dialog.getByRole("button", { name: "Enregistrer" }).click();
-  await expect(page.getByText("Nadia Commerciale")).toBeVisible();
+  await dialog.getByLabel("Téléphone / WhatsApp").fill("06 999 00 11");
+  await dialog.getByRole("button", { name: "Continuer" }).click();
+  await dialog.getByRole("button", { name: /Responsable événementiel/ }).click();
+  await dialog.getByRole("button", { name: "Continuer" }).click();
+  await dialog.getByRole("button", { name: "Ajouter l'utilisateur" }).click();
+  await expect(dialog.getByRole("heading", { name: "Utilisateur ajouté" })).toBeVisible();
+  await expect(dialog.getByRole("link", { name: /Par WhatsApp/ })).toHaveAttribute("href", /wa\.me\/242069990011/);
+  await dialog.getByRole("button", { name: "Terminer" }).click();
+  await expect(page.getByText("Nadia Événements")).toBeVisible();
+
+  // e-mail déjà utilisé → refus
+  await page.getByRole("button", { name: "Ajouter un utilisateur" }).first().click();
+  await dialog.getByLabel("Nom complet").fill("Doublon");
+  await dialog.getByLabel("E-mail (identifiant de connexion)").fill("nadia@bryan.cg");
+  await dialog.getByRole("button", { name: "Continuer" }).click();
+  await dialog.getByRole("button", { name: "Continuer" }).click();
+  await dialog.getByRole("button", { name: "Ajouter l'utilisateur" }).click();
+  await expect(dialog.getByText("Cet e-mail est déjà utilisé par un autre employé.")).toBeVisible();
+  await page.keyboard.press("Escape");
+
   await page.locator("aside").first().getByRole("button", { name: "Se déconnecter" }).click();
-  await page.getByLabel("Utilisateur (démo)").selectOption({ label: "Nadia Commerciale — Commercial" });
+  await page.getByLabel("Utilisateur (démo)").selectOption({ label: "Nadia Événements — Responsable événementiel" });
   await page.getByLabel("Mot de passe").fill("demo");
   await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Nadia Commerciale");
-  await expect(page.locator("aside").first().getByText("Véhicules & catégories")).toBeHidden();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Nadia Événements");
+  const nav = page.locator("aside").first();
+  await expect(nav.getByRole("link", { name: "Événementiel", exact: true })).toBeVisible();
+  await expect(nav.getByText("Véhicules & catégories")).toBeHidden();
+  await expect(nav.getByText("Utilisateurs", { exact: true })).toBeHidden();
+});
+
+test("utilisateurs : un responsable ne peut pas gérer les utilisateurs", async ({ page }) => {
+  await login(page, "u-auto");
+  await page.goto("/admin/utilisateurs");
+  await expect(page.getByText("Accès non autorisé")).toBeVisible();
 });

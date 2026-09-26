@@ -13,6 +13,21 @@ export function SiteFooter({ settings }: { settings: BusinessSettings }) {
           <BrandLogo light />
           <p className="text-sm">{company.tagline}</p>
           <p className="text-sm">Trouvez votre véhicule, louez selon vos besoins ou construisez votre événement avec nos solutions sur mesure.</p>
+          <div className="flex gap-2">
+            {(
+              [
+                ["Facebook", settings.socialLinks.facebook],
+                ["Instagram", settings.socialLinks.instagram],
+                ["TikTok", settings.socialLinks.tiktok],
+              ] as const
+            )
+              .filter(([, url]) => url)
+              .map(([name, url]) => (
+                <a key={name} href={url} target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/15 px-3 py-1.5 text-xs font-semibold text-white/80 hover:border-gold hover:text-white">
+                  {name}
+                </a>
+              ))}
+          </div>
         </div>
         <FooterCol
           title="Nos pôles"

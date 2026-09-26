@@ -253,6 +253,10 @@ export interface StaffUser {
   phone: string;
   roleId: RoleId;
   isActive: boolean;
+  jobTitle?: string;
+  createdAt?: string;
+  invitedBy?: string;
+  lastLoginAt?: string;
 }
 
 export interface Driver {

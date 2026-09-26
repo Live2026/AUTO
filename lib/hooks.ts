@@ -59,3 +59,10 @@ function subscribeClock(cb: () => void) {
 export function useNow(): number {
   return useSyncExternalStore(subscribeClock, () => clock, () => 0);
 }
+
+const noopSubscribe = () => () => undefined;
+
+/** true une fois dans le navigateur (après hydratation) — pour les valeurs dépendant de la date/du fuseau. */
+export function useHydrated(): boolean {
+  return useSyncExternalStore(noopSubscribe, () => true, () => false);
+}

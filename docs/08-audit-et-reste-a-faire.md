@@ -43,6 +43,14 @@ Légende : ✅ fait · 🟡 partiel · ⏭ reporté à une étape suivante (moti
 
 **Vérifications** : lint ✅ · types ✅ · build (68 pages) ✅ · **14 parcours Playwright** ✅ (dont : réception en direct d'une demande par le super admin, barre repliable, menu profil, déconnexion, essai qui bloque le véhicule, bannière publiée visible sur l'accueil, invitation puis connexion d'un employé avec ses droits).
 
+## Itération 2 (données mockées) — utilisateurs, design, vérification complète ✅
+
+- **Section « Utilisateurs »** dans le menu (Administration) : liste de l'équipe, filtres, **ajout guidé en 3 étapes** (identité → choix du rôle avec description des droits → invitation par WhatsApp / e-mail), fiche utilisateur (droits effectifs, activité, dernière connexion), modification, désactivation / réactivation, réinitialisation du mot de passe, onglet **Rôles & permissions**. Protections : e-mail unique, dernier super administrateur non désactivable, on ne change pas son propre rôle.
+- **Design** : graphiques du tableau de bord (demandes par pôle sur 14 jours avec survol et vue tableau — palette validée daltonisme/contraste ; pipeline), cartes de chiffres avec accent de pôle, indicateur de page active dans le menu, accueil public avec visuel et section « Comment ça marche », réseaux sociaux dans le pied de page.
+- **Vérification automatique complète** (`e2e/verification.spec.ts`) : **47 pages publiques** et **21 pages d'admin × 6 rôles** — aucune erreur HTTP ni JavaScript, un titre par page, aucun débordement horizontal, chaque lien du menu autorisé pour le rôle.
+- **Défauts trouvés et corrigés par cette vérification** : erreur d'hydratation sur les pages Location (dates par défaut calculées au fuseau du serveur, et figées au jour de la compilation sur les fiches) ; titre principal manquant sur la page devis client ; ordre des titres sur /vehicules.
+- **Résultat** : lint ✅ · build 69 pages ✅ · **17 tests Playwright** ✅ · Lighthouse mobile : SEO 100, bonnes pratiques 100, accessibilité 98–100, performance 77–98, LCP 2,2–3,4 s (objectif 2,5 s atteint sur 4 pages sur 8).
+
 ## Étapes restantes avant mise en production
 
 ### Étape 2 — Mise à niveau du schéma SQL (½ à 1 jour)

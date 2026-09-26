@@ -1,31 +1,29 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { Pencil, RotateCcw, UserPlus } from "lucide-react";
+import { RotateCcw, Users } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
-import { Avatar, Forbidden, PageHeader, allowed, useStaff } from "@/components/admin/shell";
+import { Forbidden, PageHeader, allowed, useStaff } from "@/components/admin/shell";
 import { Loading, Panel, Tabs } from "@/components/admin/ui";
 import { Button, Field, cn } from "@/components/ui";
-import { Modal } from "@/components/ui/modal";
-import { BusinessError, getSettings, listAudit, mockDb, resetDemo, saveRole, saveSettings, saveStaff, staffById } from "@/lib/db/mock-backend";
+import { BusinessError, getSettings, listAudit, mockDb, resetDemo, saveSettings, staffById } from "@/lib/db/mock-backend";
 import { formatDateTime } from "@/lib/format";
-import { REQUEST_TYPE_LABELS, ROLE_LABELS } from "@/lib/labels";
-import { ALL_PERMISSIONS, can } from "@/lib/permissions";
-import { formatPhone } from "@/lib/phone";
-import type { BusinessSettings, Pole, RequestType, RoleDef, RoleId, StaffUser } from "@/lib/types";
+import { REQUEST_TYPE_LABELS } from "@/lib/labels";
+import { can } from "@/lib/permissions";
+import type { BusinessSettings, Pole, RequestType } from "@/lib/types";
 
-type Tab = "entreprise" | "regles" | "whatsapp" | "utilisateurs" | "roles" | "audit";
+type Tab = "entreprise" | "regles" | "whatsapp" | "audit";
 const POLES: ["default" | Pole, string][] = [["default", "Général"], ["sale", "Vente"], ["rental", "Location"], ["event", "Événementiel"]];
 
 export default function SettingsPage() {
   const user = useStaff();
-  const [tab, setTab] = useState<Tab>(can(user.roleId, "settings.write") ? "entreprise" : can(user.roleId, "users.manage") ? "utilisateurs" : "audit");
+  const [tab, setTab] = useState<Tab>(can(user.roleId, "settings.write") ? "entreprise" : "audit");
   const settings = useLiveQuery(() => getSettings(), []);
   if (!allowed(user, ["settings.write", "users.manage", "audit.read"])) return <Forbidden />;
   if (!settings) return <Loading />;
   const tabs: [Tab, string][] = [
     ...(can(user.roleId, "settings.write") ? ([["entreprise", "Entreprise & canaux"], ["regles", "Règles métier"], ["whatsapp", "Messages WhatsApp"]] as [Tab, string][]) : []),
-    ...(can(user.roleId, "users.manage") ? ([["utilisateurs", "Utilisateurs"], ["roles", "Rôles & permissions"]] as [Tab, string][]) : []),
     ...(can(user.roleId, "audit.read") ? ([["audit", "Journal d'audit"]] as [Tab, string][]) : []),
   ];
   return (
@@ -49,14 +47,21 @@ export default function SettingsPage() {
           )
         }
       />
-      <div className="mb-5">
-        <Tabs value={tab} onChange={setTab} items={tabs} />
-      </div>
+      {can(user.roleId, "users.manage") && (
+        <Link href="/admin/utilisateurs" className="mb-5 flex items-center gap-3 rounded-2xl border border-line bg-white p-4 text-sm hover:border-ink/30">
+          <Users className="size-5 text-gold-deep" />
+          <span className="flex-1"><strong>Utilisateurs, rôles et permissions</strong> — ajouter un responsable automobile, location, événementiel, un commercial…</span>
+          <span className="font-semibold">Ouvrir →</span>
+        </Link>
+      )}
+      {tabs.length > 0 && (
+        <div className="mb-5">
+          <Tabs value={tab} onChange={setTab} items={tabs} />
+        </div>
+      )}
       {tab === "entreprise" && <CompanyForm key={JSON.stringify(settings.company)} initial={settings} />}
       {tab === "regles" && <RulesForm initial={settings} />}
       {tab === "whatsapp" && <TemplatesForm initial={settings} />}
-      {tab === "utilisateurs" && <UsersManager />}
-      {tab === "roles" && <RolesMatrix />}
       {tab === "audit" && <AuditLog />}
       {(tab === "entreprise" || tab === "whatsapp") && (
         <p className="mt-4 text-xs text-muted">Mode démo : les numéros et textes du site public restent ceux de la démonstration. Avec Supabase, le site se met à jour à chaque enregistrement.</p>
@@ -190,117 +195,6 @@ function TemplatesForm({ initial }: { initial: BusinessSettings }) {
         <Feedback msg={msg} />
       </div>
     </form>
-  );
-}
-
-function UsersManager() {
-  const me = useStaff();
-  const staff = useLiveQuery(() => mockDb.staff.toArray(), []);
-  const [editing, setEditing] = useState<StaffUser | null>(null);
-  const [error, setError] = useState<string>();
-  if (!staff) return <Loading />;
-  return (
-    <>
-      <div className="mb-3 flex justify-end">
-        <Button onClick={() => setEditing({ id: crypto.randomUUID(), fullName: "", email: "", phone: "", roleId: "sales", isActive: true })}><UserPlus className="size-4" /> Inviter un employé</Button>
-      </div>
-      <div className="card divide-y divide-line">
-        {staff.map((u) => (
-          <div key={u.id} className="flex flex-wrap items-center gap-3 p-4 text-sm">
-            <Avatar user={u} />
-            <div className="min-w-48 flex-1">
-              <p className={cn("font-semibold", !u.isActive && "text-muted line-through")}>{u.fullName}{u.id === me.id && <span className="ml-2 text-xs font-normal text-muted">(vous)</span>}</p>
-              <p className="text-xs text-muted">{u.email} · {formatPhone(u.phone)}</p>
-            </div>
-            <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", u.roleId === "admin" ? "bg-gold text-ink" : "bg-paper")}>{ROLE_LABELS[u.roleId]}</span>
-            <span className={cn("text-xs font-semibold", u.isActive ? "text-emerald-700" : "text-muted")}>{u.isActive ? "Actif" : "Désactivé"}</span>
-            <button type="button" onClick={() => setEditing(u)} className="rounded-lg p-2 hover:bg-black/5" aria-label={`Modifier ${u.fullName}`}><Pencil className="size-4" /></button>
-          </div>
-        ))}
-      </div>
-      <Modal open={!!editing} onClose={() => setEditing(null)} title={editing && staff.some((u) => u.id === editing.id) ? "Modifier l'employé" : "Inviter un employé"}>
-        {editing && (
-          <form
-            className="space-y-4"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              try {
-                await saveStaff(editing, me.id);
-                setEditing(null);
-                setError(undefined);
-              } catch (err) {
-                setError(err instanceof BusinessError ? err.message : String(err));
-              }
-            }}
-          >
-            <Field label="Nom complet"><input className="input" value={editing.fullName} onChange={(e) => setEditing({ ...editing, fullName: e.target.value })} required /></Field>
-            <Field label="E-mail (identifiant de connexion)"><input className="input" type="email" value={editing.email} onChange={(e) => setEditing({ ...editing, email: e.target.value })} required /></Field>
-            <Field label="Téléphone"><input className="input" value={editing.phone} onChange={(e) => setEditing({ ...editing, phone: e.target.value })} /></Field>
-            <Field label="Rôle">
-              <select className="input" value={editing.roleId} onChange={(e) => setEditing({ ...editing, roleId: e.target.value as RoleId })}>
-                {(Object.keys(ROLE_LABELS) as RoleId[]).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-              </select>
-            </Field>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-ink" checked={editing.isActive} disabled={editing.id === me.id} onChange={(e) => setEditing({ ...editing, isActive: e.target.checked })} /> Compte actif</label>
-            <p className="text-xs text-muted">En production, l&apos;invitation envoie un e-mail Supabase Auth pour définir le mot de passe. Démo : mot de passe « demo ».</p>
-            {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
-            <Button type="submit" className="w-full">Enregistrer</Button>
-          </form>
-        )}
-      </Modal>
-    </>
-  );
-}
-
-function RolesMatrix() {
-  const me = useStaff();
-  const roles = useLiveQuery(() => mockDb.roles.toArray(), []);
-  const [msg, setMsg] = useState<string>();
-  if (!roles) return <Loading />;
-  const toggle = async (role: RoleDef, perm: (typeof ALL_PERMISSIONS)[number][0]) => {
-    const has = role.permissions.includes(perm);
-    await saveRole({ ...role, permissions: has ? role.permissions.filter((p) => p !== perm) : [...role.permissions, perm] }, me.id);
-    setMsg(`Permissions du rôle « ${role.label} » mises à jour — effet immédiat.`);
-  };
-  const order: RoleId[] = ["admin", "manager_auto", "manager_rental", "manager_events", "sales", "accountant", "driver"];
-  const sorted = order.map((id) => roles.find((r) => r.id === id)).filter((r): r is RoleDef => !!r);
-  return (
-    <Panel title="Matrice des permissions (R12) — cliquez pour accorder / retirer">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] text-xs">
-          <thead className="border-b border-line bg-paper">
-            <tr>
-              <th className="px-3 py-2 text-left font-semibold">Permission</th>
-              {sorted.map((r) => <th key={r.id} className="px-2 py-2 font-semibold">{ROLE_LABELS[r.id]}</th>)}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {ALL_PERMISSIONS.map(([p, label]) => (
-              <tr key={p}>
-                <td className="px-3 py-2">{label} <span className="font-mono text-muted">{p}</span></td>
-                {sorted.map((r) => {
-                  const on = r.id === "admin" || r.permissions.includes(p) || r.permissions.includes("*");
-                  return (
-                    <td key={r.id} className="px-2 py-1.5 text-center">
-                      <input
-                        type="checkbox"
-                        className="size-4 accent-ink"
-                        checked={on}
-                        disabled={r.id === "admin"}
-                        onChange={() => toggle(r, p)}
-                        aria-label={`${label} — ${ROLE_LABELS[r.id]}`}
-                        title={r.id === "admin" ? "Le super administrateur a toujours tous les droits" : undefined}
-                      />
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {msg && <p className="border-t border-line p-3 text-sm text-emerald-700">{msg}</p>}
-    </Panel>
   );
 }
 

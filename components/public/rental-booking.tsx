@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { rememberView } from "@/lib/db/public-db";
 import { trackEvent } from "@/lib/db/mock-backend";
 import { formatDate, formatXAF } from "@/lib/format";
-import { dayInput, toIso, useBookings } from "@/lib/hooks";
+import { dayInput, toIso, useBookings, useHydrated } from "@/lib/hooks";
 import { applyRentalPromotion, estimateRental, rentalAvailability } from "@/lib/rules/rental";
 import { usePromotions } from "@/lib/data/live";
 import { useNow } from "@/lib/hooks";
@@ -35,8 +35,12 @@ export function RentalBooking({
 }) {
   const rates = vehicle.rental!;
   const bookings = useBookings();
-  const [start, setStart] = useState(dayInput(1));
-  const [end, setEnd] = useState(dayInput(3));
+  const hydrated = useHydrated();
+  const [startDraft, setStart] = useState("");
+  const [endDraft, setEnd] = useState("");
+  // Dates par défaut : demain → +3 j, calculées dans le navigateur (jamais figées à la compilation).
+  const start = startDraft || (hydrated ? dayInput(1) : "");
+  const end = endDraft || (hydrated ? dayInput(3) : "");
   const [withDriver, setWithDriver] = useState(rates.withDriver && !rates.selfDrive ? true : rates.withDriver);
   const [city, setCity] = useState(rates.cities[0] ?? cities[0] ?? "");
   const [comment, setComment] = useState("");
@@ -99,7 +103,7 @@ export function RentalBooking({
     <form onSubmit={submit} className="card space-y-5 p-5" noValidate>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Départ">
-          <input type="date" className="input" min={dayInput(0)} value={start} onChange={(e) => setStart(e.target.value)} />
+          <input type="date" className="input" min={hydrated ? dayInput(0) : undefined} value={start} onChange={(e) => setStart(e.target.value)} />
         </Field>
         <Field label="Retour" error={!valid && start && end ? "Après le départ" : errors.endAt}>
           <input type="date" className="input" min={start} value={end} onChange={(e) => setEnd(e.target.value)} />

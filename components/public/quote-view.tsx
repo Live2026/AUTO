@@ -79,7 +79,7 @@ export function QuoteView({ token, settings, whatsappNumber, phoneNumber }: { to
           </div>
           <div className="text-right">
             <p className="eyebrow text-gold">Devis</p>
-            <p className="font-mono text-xl font-bold">{q.reference}</p>
+            <h1 className="font-mono text-xl font-bold">{q.reference}</h1>
             <p className="text-xs text-white/60">Version {q.version} · valable jusqu&apos;au {formatDate(q.validUntil)}</p>
           </div>
         </header>

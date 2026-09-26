@@ -26,9 +26,10 @@ export function TypeBadge({ type }: { type: RequestType }) {
   return <Badge className={TYPE_TONE[type]}>{REQUEST_TYPE_LABELS[type]}</Badge>;
 }
 
-export function StatCard({ label, value, hint, tone = "text-ink", icon }: { label: string; value: ReactNode; hint?: ReactNode; tone?: string; icon?: ReactNode }) {
+export function StatCard({ label, value, hint, tone = "text-ink", icon, accent }: { label: string; value: ReactNode; hint?: ReactNode; tone?: string; icon?: ReactNode; accent?: string }) {
   return (
-    <div className="card p-4">
+    <div className="card relative overflow-hidden p-4">
+      {accent && <span className={cn("absolute inset-y-3 left-0 w-1 rounded-r-full", accent)} aria-hidden />}
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-medium text-muted">{label}</p>
         {icon}

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, CalendarHeart, Car, Clock, KeyRound, MessageCircle, ShieldCheck } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarHeart, Car, CheckCircle2, Clock, FileCheck2, KeyRound, MessageCircle, MousePointerClick, ShieldCheck, Smartphone } from "lucide-react";
+import { VehicleVisual } from "@/components/public/vehicle-visual";
 import { BannerStrip } from "@/components/public/banner-strip";
 import { RecentlyViewed } from "@/components/public/recently-viewed";
 import { RealisationCard } from "@/components/public/realisation-card";
@@ -47,24 +48,50 @@ export default async function HomePage() {
       {/* HERO (§12) */}
       <section className="relative overflow-hidden bg-ink text-white">
         <div className="pointer-events-none absolute inset-0 opacity-60 [background:radial-gradient(60%_60%_at_80%_0%,rgba(201,162,39,0.35),transparent_70%),radial-gradient(40%_50%_at_0%_100%,rgba(14,116,144,0.35),transparent_70%)]" />
-        <div className="container-page relative pt-12 pb-10 sm:pt-20 sm:pb-16">
-          <p className="eyebrow text-gold">Automobile • Location • Événementiel</p>
-          <h1 className="mt-4 max-w-3xl text-4xl leading-[1.05] font-extrabold tracking-tight sm:text-6xl">
-            BRYAN <span className="text-gold">MULTISERVICES</span>
-          </h1>
-          <p className="mt-5 max-w-xl text-lg text-white/75">
-            Trouvez votre véhicule, louez selon vos besoins ou construisez votre événement avec nos solutions sur mesure.
-          </p>
+        <div className="container-page relative grid items-center gap-10 pt-12 pb-10 sm:pt-20 sm:pb-16 lg:grid-cols-[1.1fr_1fr]">
+          <div>
+            <p className="eyebrow text-gold">Automobile • Location • Événementiel</p>
+            <h1 className="mt-4 max-w-3xl text-4xl leading-[1.05] font-extrabold tracking-tight sm:text-6xl">
+              BRYAN <span className="text-gold">MULTISERVICES</span>
+            </h1>
+            <p className="mt-5 max-w-xl text-lg text-white/80">
+              Trouvez votre véhicule, louez selon vos besoins ou construisez votre événement avec nos solutions sur mesure.
+            </p>
 
-          <div className="mt-10 grid gap-3 sm:grid-cols-3">
-            <HeroAction href="/vehicules" icon={<Car className="size-6" />} title="Acheter un véhicule" text="Neufs & occasions vérifiées" accent="bg-gold text-ink" />
-            <HeroAction href="/location" icon={<KeyRound className="size-6" />} title="Louer un véhicule" text="Avec ou sans chauffeur" accent="bg-rent text-white" />
-            <HeroAction href="/evenementiel" icon={<CalendarHeart className="size-6" />} title="Organiser un événement" text="Mariages, entreprises, cérémonies" accent="bg-event text-white" />
+            <div className="mt-8 grid gap-3">
+              <HeroAction href="/vehicules" icon={<Car className="size-6" />} title="Acheter un véhicule" text="Neufs & occasions vérifiées" accent="bg-gold text-ink" />
+              <HeroAction href="/location" icon={<KeyRound className="size-6" />} title="Louer un véhicule" text="Avec ou sans chauffeur" accent="bg-rent text-white" />
+              <HeroAction href="/evenementiel" icon={<CalendarHeart className="size-6" />} title="Organiser un événement" text="Mariages, entreprises, cérémonies" accent="bg-event text-white" />
+            </div>
+
+            <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-white/80">
+              <WhatsAppButton number={whatsappNumber(settings)} message="Bonjour BRYAN MULTISERVICES, j'aimerais avoir des informations." label="Réponse rapide sur WhatsApp" />
+              <span className="inline-flex items-center gap-1.5"><Clock className="size-4 text-gold" />{settings.company.hours}</span>
+            </div>
           </div>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-white/70">
-            <WhatsAppButton number={whatsappNumber(settings)} message="Bonjour BRYAN MULTISERVICES, j'aimerais avoir des informations." label="Réponse rapide sur WhatsApp" />
-            <span className="inline-flex items-center gap-1.5"><Clock className="size-4 text-gold" />{settings.company.hours}</span>
+          {/* Visuel (ordinateur) */}
+          <div className="relative hidden lg:block" aria-hidden>
+            <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-gold/25 via-transparent to-rent/25 blur-2xl" />
+            <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 p-3 shadow-2xl">
+              <div className="aspect-[4/3] overflow-hidden rounded-3xl">
+                <VehicleVisual bodyType="suv" colorHex="#e5e7eb" variant={1} />
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                {[["#111827", "sedan", 0], ["#b91c1c", "suv", 2], ["#f9fafb", "van", 3]].map(([c, b, v]) => (
+                  <div key={c as string} className="aspect-[4/3] overflow-hidden rounded-2xl">
+                    <VehicleVisual bodyType={b as "suv"} colorHex={c as string} variant={v as number} />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="absolute -bottom-5 -left-6 flex items-center gap-3 rounded-2xl bg-white p-3 pr-5 text-ink shadow-2xl">
+              <span className="grid size-10 place-items-center rounded-xl bg-whatsapp text-white"><MessageCircle className="size-5" /></span>
+              <span className="text-sm leading-tight"><strong className="block">Un conseiller vous répond</strong><span className="text-muted">sans compte à créer</span></span>
+            </div>
+            <div className="absolute -top-4 -right-4 flex items-center gap-2 rounded-2xl bg-gold px-4 py-2.5 text-sm font-bold text-ink shadow-xl">
+              <FileCheck2 className="size-4" /> Devis en ligne
+            </div>
           </div>
         </div>
       </section>
@@ -180,6 +207,29 @@ export default async function HomePage() {
             <RealisationCard key={r.id} realisation={r} eventType={eventTypes.find((e) => e.id === r.eventTypeId)} />
           ))}
         </div>
+      </section>
+
+      {/* COMMENT ÇA MARCHE (§5) */}
+      <section className="container-page pt-16">
+        <SectionHeading eyebrow="Simple et rapide" title="Comment ça marche ?" description="Pas de compte, pas de formulaire interminable : vous êtes en contact avec un conseiller en quelques secondes." />
+        <ol className="grid gap-4 md:grid-cols-4">
+          {[
+            [MousePointerClick, "Découvrez", "Parcourez les véhicules, la location et nos prestations événementielles."],
+            [Smartphone, "Demandez", "Un clic sur WhatsApp, un appel ou un formulaire de 30 secondes."],
+            [MessageCircle, "Échangez", "Un conseiller vous répond et vous accompagne."],
+            [CheckCircle2, "Confirmez", "Rendez-vous, réservation ou devis accepté en ligne."],
+          ].map(([I, t, d], i) => {
+            const Icon = I as typeof Smartphone;
+            return (
+              <li key={t as string} className="card relative p-5">
+                <span className="absolute top-4 right-4 font-mono text-3xl font-black text-line">{i + 1}</span>
+                <span className="grid size-11 place-items-center rounded-xl bg-ink text-gold"><Icon className="size-5" /></span>
+                <p className="mt-4 font-bold">{t as string}</p>
+                <p className="mt-1 text-sm text-muted">{d as string}</p>
+              </li>
+            );
+          })}
+        </ol>
       </section>
 
       {/* RÉASSURANCE */}

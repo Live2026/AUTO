@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { AlertTriangle, ArrowRight, CalendarDays, CalendarHeart, Car, Inbox, KeyRound, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, ArrowRight, CalendarDays, CalendarHeart, Car, Inbox, KeyRound, Plus, UserPlus } from "lucide-react";
 import { Avatar, useStaff } from "@/components/admin/shell";
+import { HorizontalBars, StackedColumns, type DayBucket, type SeriesKey } from "@/components/admin/charts";
 import { Loading, Panel, StatCard, StatusBadge, TypeBadge } from "@/components/admin/ui";
 import { buttonClass } from "@/components/ui";
 import { getSettings, listBookings, listEvents, listQuotes, listRequests, mockDb } from "@/lib/db/mock-backend";
 import { formatDateLong, formatDateTime, formatRelative, formatXAF } from "@/lib/format";
-import { CHANNEL_LABELS, ROLE_LABELS } from "@/lib/labels";
+import { CHANNEL_LABELS, PIPELINE, REQUEST_STATUS_LABELS, ROLE_LABELS } from "@/lib/labels";
 import { useNow } from "@/lib/hooks";
 import { BOOKING_KIND_COLORS, BOOKING_KIND_LABELS, BOOKING_STATUS_LABELS } from "@/lib/labels";
 import { computeQuoteTotals } from "@/lib/rules/quote";
@@ -20,6 +22,7 @@ const DAY = 86_400_000;
 export default function DashboardPage() {
   const user = useStaff();
   const now = useNow();
+  const router = useRouter();
   const data = useLiveQuery(async () => {
     const [requests, bookings, quotes, events, vehicles, appointments, settings] = await Promise.all([
       listRequests(),
@@ -77,6 +80,20 @@ export default function DashboardPage() {
   const conversion = closed.length ? Math.round((won / closed.length) * 100) : 0;
   const slaMs = settings.slaNewRequestMinutes * 60_000;
 
+  // Graphique : demandes reçues sur 14 jours, par pôle
+  const poleOf = (t: string): SeriesKey => (["sale", "test_drive", "appointment", "trade_in"].includes(t) ? "sale" : t === "rental" ? "rental" : t === "event" ? "event" : "other");
+  const days: DayBucket[] = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(now - (13 - i) * DAY);
+    const key = d.toLocaleDateString("fr-CA", { timeZone: "Africa/Brazzaville" });
+    return { date: key, label: d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Africa/Brazzaville" }), values: { sale: 0, rental: 0, event: 0, other: 0 } };
+  });
+  for (const r of mine) {
+    const key = new Date(r.createdAt).toLocaleDateString("fr-CA", { timeZone: "Africa/Brazzaville" });
+    const b = days.find((d) => d.date === key);
+    if (b) b.values[poleOf(r.type)]++;
+  }
+  const pipelineRows = PIPELINE.filter((st) => st !== "completed").map((st) => ({ key: st, label: REQUEST_STATUS_LABELS[st], value: mine.filter((r) => r.status === st).length }));
+
   const agenda = [
     ...bookings
       .filter((b) => b.status !== "cancelled" && b.status !== "completed" && new Date(b.end).getTime() > now && new Date(b.start).getTime() < now + 7 * DAY)
@@ -114,6 +131,11 @@ export default function DashboardPage() {
             <Link href="/admin/calendrier" className={buttonClass("outline", "sm", "border-white/20 bg-white/5 text-white hover:border-white/50")}>
               <CalendarDays className="size-4" /> Calendrier
             </Link>
+            {can(user.roleId, "users.manage") && (
+              <Link href="/admin/utilisateurs" className={buttonClass("outline", "sm", "border-white/20 bg-white/5 text-white hover:border-white/50")}>
+                <UserPlus className="size-4" /> Utilisateurs
+              </Link>
+            )}
           </div>
         </div>
       </section>
@@ -128,31 +150,40 @@ export default function DashboardPage() {
 
       <div className="space-y-6">
         <PoleRow title="Automobile" icon={<Car className="size-4 text-gold" />}>
-          <StatCard label="Véhicules en stock" value={stock} />
+          <StatCard label="Véhicules en stock" value={stock} accent="bg-[#b08a14]" />
           <StatCard label="Demandes d'achat ouvertes" value={saleReqs} />
           <StatCard label="Rendez-vous / essais" value={upcomingAppointments} />
           <StatCard label="Ventes (30 j)" value={soldRecent.length} />
           <StatCard label="CA ventes (30 j)" value={formatXAF(saleRevenue)} tone="text-[#7a5f0c]" />
         </PoleRow>
         <PoleRow title="Location" icon={<KeyRound className="size-4 text-rent" />}>
-          <StatCard label="Disponibles maintenant" value={`${rentFleet.filter((v) => !busyNow.has(v.id)).length} / ${rentFleet.length}`} />
+          <StatCard accent="bg-[#0b7fa3]" label="Disponibles maintenant" value={`${rentFleet.filter((v) => !busyNow.has(v.id)).length} / ${rentFleet.length}`} />
           <StatCard label="Locations en cours" value={rentalsInProgress} />
           <StatCard label="Réservations à venir" value={reservations} />
           <StatCard label="CA location (réservé)" value={formatXAF(rentalRevenue)} tone="text-rent" />
         </PoleRow>
         <PoleRow title="Événementiel" icon={<CalendarHeart className="size-4 text-event" />}>
-          <StatCard label="Nouvelles demandes" value={eventNew} />
+          <StatCard label="Nouvelles demandes" value={eventNew} accent="bg-[#be185d]" />
           <StatCard label="Devis en attente" value={quotesPending} />
           <StatCard label="Événements confirmés" value={eventsConfirmed} />
           <StatCard label="Événements à venir" value={eventsUpcoming} />
           <StatCard label="CA devis acceptés" value={formatXAF(eventRevenue)} tone="text-event" />
         </PoleRow>
         <PoleRow title="CRM" icon={<Inbox className="size-4" />}>
-          <StatCard label="Nouveaux prospects (7 j)" value={newProspects} />
+          <StatCard label="Nouveaux prospects (7 j)" value={newProspects} accent="bg-ink" />
           <StatCard label="À traiter" value={toHandle.length} tone={toHandle.length ? "text-rose-600" : "text-ink"} />
           <StatCard label="En attente client" value={waiting} />
           <StatCard label="Taux de conversion" value={`${conversion} %`} hint={`${won} gagnées / ${closed.length} clôturées`} />
         </PoleRow>
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+        <Panel title="Demandes reçues — 14 derniers jours">
+          <StackedColumns data={days} title={`${days.reduce((s, d) => s + Object.values(d.values).reduce((a, b) => a + b, 0), 0)} demandes sur la période, par pôle`} />
+        </Panel>
+        <Panel title="Pipeline commercial (demandes ouvertes)">
+          <HorizontalBars rows={pipelineRows} onSelect={() => router.push("/admin/crm")} />
+        </Panel>
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">

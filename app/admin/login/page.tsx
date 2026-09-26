@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, Field, Spinner } from "@/components/ui";
 import { signIn } from "@/lib/admin/session";
-import { ensureSeeded, mockDb } from "@/lib/db/mock-backend";
+import { ensureSeeded, mockDb, recordLogin } from "@/lib/db/mock-backend";
 import { ROLE_LABELS } from "@/lib/labels";
 
 export default function LoginPage() {
@@ -30,6 +30,7 @@ export default function LoginPage() {
           e.preventDefault();
           if (password !== "demo") return setError("Mot de passe incorrect (démo : « demo »).");
           signIn(selected);
+          void recordLogin(selected);
           router.replace("/admin");
         }}
       >

@@ -179,3 +179,42 @@ export const ROLE_LABELS: Record<RoleId, string> = {
   accountant: "Comptable",
   driver: "Chauffeur",
 };
+
+/** Présentation des rôles pour l'ajout d'un utilisateur (§42). */
+export const ROLE_INFO: Record<RoleId, { summary: string; can: string[]; tone: string }> = {
+  admin: {
+    summary: "Accès total : tous les pôles, les utilisateurs, les paramètres et le journal d'audit.",
+    can: ["Tout voir et tout modifier", "Ajouter / désactiver des utilisateurs", "Modifier les permissions"],
+    tone: "bg-gold text-ink",
+  },
+  manager_auto: {
+    summary: "Gère le stock de véhicules à vendre, les demandes d'achat, les essais et les promotions automobile.",
+    can: ["Véhicules & prix", "Demandes de vente & rendez-vous", "Promotions automobile", "Devis"],
+    tone: "bg-gold-soft text-gold-deep",
+  },
+  manager_rental: {
+    summary: "Gère la flotte de location, les tarifs, les réservations et les chauffeurs.",
+    can: ["Flotte & tarifs", "Options / réservations", "Chauffeurs", "Devis location"],
+    tone: "bg-rent-soft text-rent",
+  },
+  manager_events: {
+    summary: "Gère les prestations, packages, dossiers événements, devis et réalisations.",
+    can: ["Prestations & packages", "Dossiers événements", "Devis événementiels", "Réalisations"],
+    tone: "bg-event-soft text-event",
+  },
+  sales: {
+    summary: "Traite les demandes qui lui sont affectées et organise les rendez-vous.",
+    can: ["Ses demandes (CRM)", "Notes & appels", "Rendez-vous & essais"],
+    tone: "bg-sky-100 text-sky-800",
+  },
+  accountant: {
+    summary: "Consulte les devis, le chiffre d'affaires et les statistiques, sans rien modifier.",
+    can: ["Devis (lecture)", "Chiffres financiers", "Analytics"],
+    tone: "bg-emerald-100 text-emerald-800",
+  },
+  driver: {
+    summary: "Consulte son planning de missions (accès complet en phase 2).",
+    can: ["Planning personnel (phase 2)"],
+    tone: "bg-zinc-100 text-zinc-700",
+  },
+};

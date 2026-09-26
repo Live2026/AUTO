@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { clearDraft, loadDraft, saveDraft } from "@/lib/db/public-db";
 import { trackEvent } from "@/lib/db/mock-backend";
 import { formatDateLong, formatNumber, formatXAF } from "@/lib/format";
-import { dayInput } from "@/lib/hooks";
+import { dayInput, useHydrated } from "@/lib/hooks";
 import type { EventType, EventTypeRecommendation, Package, Service, ServiceCategory } from "@/lib/types";
 import { buildWhatsAppLink, fillTemplate } from "@/lib/whatsapp";
 import { Button, Field, Spinner, buttonClass, cn } from "../ui";
@@ -77,6 +77,7 @@ export function EventWizard({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [state, setState] = useState<SubmitState>({ kind: "idle" });
   const topRef = useRef<HTMLDivElement>(null);
+  const hydrated = useHydrated();
 
   // Reprise du brouillon IndexedDB + préremplissage via l'URL (?type=, ?services=)
   useEffect(() => {
@@ -247,7 +248,7 @@ export function EventWizard({
         {data.step === 1 && (
           <Step title="Quelle est la date ?">
             <Field label="Date de l'événement">
-              <input type="date" className="input" min={dayInput(0)} disabled={data.dateUnknown} value={data.date} onChange={(e) => set({ date: e.target.value })} />
+              <input type="date" className="input" min={hydrated ? dayInput(0) : undefined} disabled={data.dateUnknown} value={data.date} onChange={(e) => set({ date: e.target.value })} />
             </Field>
             <label className="mt-3 flex items-center gap-2 text-sm">
               <input type="checkbox" className="size-4 accent-event" checked={data.dateUnknown} onChange={(e) => set({ dateUnknown: e.target.checked })} />

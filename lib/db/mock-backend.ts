@@ -1132,7 +1132,7 @@ export async function saveStaff(user: StaffUser, actorId: string): Promise<void>
     const admins = (await mockDb.staff.toArray()).filter((u) => u.roleId === "admin" && u.isActive && u.id !== user.id);
     if (admins.length === 0) throw new BusinessError("last_admin", "Impossible : il doit rester au moins un super administrateur actif.");
   }
-  await mockDb.staff.put({ ...user, email });
+  await mockDb.staff.put({ ...user, email, createdAt: prev?.createdAt ?? user.createdAt ?? nowIso(), invitedBy: prev?.invitedBy ?? user.invitedBy ?? actorId });
   await audit(actorId, "staff_profiles", user.id, prev ? "update" : "insert", `${prev ? "Employé modifié" : "Employé invité"} : ${user.fullName} (${ROLE_LABELS[user.roleId]}${user.isActive ? "" : ", désactivé"})`);
 }
 
@@ -1227,4 +1227,18 @@ export async function updateContact(contact: Contact, actorId: string): Promise<
   if (clash && clash.id !== contact.id) throw new BusinessError("phone_taken", `Ce numéro appartient déjà à ${clash.fullName}.`);
   await mockDb.contacts.put({ ...contact, phoneE164: phone, whatsappE164: normalizePhone(contact.whatsappE164) ?? undefined, updatedAt: nowIso() });
   await audit(actorId, "contacts", contact.id, "update", `Contact modifié : ${contact.fullName}`);
+}
+
+/** Dernière connexion (Supabase Auth : auth.users.last_sign_in_at). */
+export async function recordLogin(userId: string): Promise<void> {
+  const u = await mockDb.staff.get(userId);
+  if (u) await mockDb.staff.put({ ...u, lastLoginAt: nowIso() });
+}
+
+/** Démo : simule l'envoi d'un lien de réinitialisation (Supabase Auth : resetPasswordForEmail). */
+export async function sendPasswordReset(userId: string, actorId: string): Promise<string> {
+  const u = await mockDb.staff.get(userId);
+  if (!u) throw new BusinessError("not_found", "Utilisateur introuvable.");
+  await audit(actorId, "staff_profiles", userId, "update", `Lien de réinitialisation du mot de passe envoyé à ${u.email}`);
+  return u.email;
 }
