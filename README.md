@@ -69,6 +69,7 @@ e2e/                  tests Playwright
 | 05 | [Modèle de données](docs/05-modele-de-donnees.md) |
 | 06 | [Backlog MVP](docs/06-backlog-mvp.md) |
 | 07 | [Questions client](docs/07-questions-client.md) |
+| 08 | [Audit & reste à faire](docs/08-audit-et-reste-a-faire.md) |
 
 ## Aperçu
 
