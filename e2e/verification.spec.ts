@@ -18,7 +18,7 @@ const ADMIN = [
   "/admin", "/admin/crm", "/admin/crm/r-1", "/admin/crm/r-3", "/admin/rendez-vous", "/admin/contacts", "/admin/devis", "/admin/devis/q-1",
   "/admin/vehicules", "/admin/vehicules/veh-prado-2023", "/admin/vehicules/nouveau", "/admin/location", "/admin/chauffeurs",
   "/admin/evenementiel", "/admin/calendrier", "/admin/marketing", "/admin/medias", "/admin/analytics", "/admin/utilisateurs",
-  "/admin/parametres", "/admin/profil",
+  "/admin/parametres", "/admin/journal", "/admin/profil",
 ];
 
 function watchErrors(page: Page) {

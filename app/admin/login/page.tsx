@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { Button, Field, Spinner, cn } from "@/components/ui";
 import { signIn } from "@/lib/admin/session";
-import { ensureSeeded, mockDb, recordLogin, sendPasswordReset } from "@/lib/db/mock-backend";
+import { ensureSeeded, mockDb, recordFailedLogin, recordLogin, sendPasswordReset } from "@/lib/db/mock-backend";
 import { ROLE_LABELS } from "@/lib/labels";
 
 const DEMO_PASSWORD = "demo";
@@ -46,8 +46,14 @@ export default function LoginPage() {
   const submit = async () => {
     setError(undefined);
     const user = staff?.find((u) => u.email === emailValue.trim().toLowerCase());
-    if (!user || password !== DEMO_PASSWORD) return setError("E-mail ou mot de passe incorrect.");
-    if (!user.isActive) return setError("Ce compte est désactivé. Contactez le super administrateur.");
+    if (!user || password !== DEMO_PASSWORD) {
+      void recordFailedLogin(emailValue, "bad_credentials");
+      return setError("E-mail ou mot de passe incorrect.");
+    }
+    if (!user.isActive) {
+      void recordFailedLogin(emailValue, "disabled");
+      return setError("Ce compte est désactivé. Contactez le super administrateur.");
+    }
     setPending(true);
     signIn(user.id);
     await recordLogin(user.id);
@@ -240,7 +246,7 @@ export default function LoginPage() {
 /** Panneau de présentation (ordinateur) : aperçu décoratif de l'espace de gestion. */
 function Showcase() {
   return (
-    <aside className="relative hidden overflow-hidden bg-ink p-12 text-white lg:flex lg:flex-col">
+    <aside className="surface-dark relative hidden overflow-hidden bg-ink p-12 text-white lg:flex lg:flex-col">
       <div className="pointer-events-none absolute inset-0 [background:radial-gradient(45%_40%_at_85%_30%,rgba(201,162,39,0.22),transparent_70%),radial-gradient(50%_50%_at_0%_100%,rgba(14,116,144,0.28),transparent_70%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] [background-size:44px_44px] [mask-image:radial-gradient(70%_60%_at_60%_35%,#000,transparent)]" />
 
@@ -284,7 +290,7 @@ function Showcase() {
           </div>
         </div>
 
-        <div className="absolute -right-4 -bottom-2 w-80 rounded-2xl bg-white p-4 text-ink shadow-2xl shadow-black/40 ring-1 ring-black/5 xl:-right-10">
+        <div className="surface-light absolute -right-4 -bottom-2 w-80 rounded-2xl bg-white p-4 text-ink shadow-2xl shadow-black/40 ring-1 ring-black/5 xl:-right-10">
           <div className="flex items-start gap-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-sky-100 text-sky-700"><Inbox className="size-4" /></span>
             <div className="min-w-0">
@@ -294,7 +300,7 @@ function Showcase() {
             </div>
           </div>
         </div>
-        <div className="absolute -top-3 -left-6 hidden rounded-xl bg-white px-3 py-2 text-xs font-semibold text-ink shadow-xl shadow-black/30 xl:flex xl:items-center xl:gap-2">
+        <div className="surface-light absolute -top-3 -left-6 hidden rounded-xl bg-white px-3 py-2 text-xs font-semibold text-ink shadow-xl shadow-black/30 xl:flex xl:items-center xl:gap-2">
           <FileCheck2 className="size-4 text-emerald-700" /> Devis accepté en ligne
         </div>
       </div>

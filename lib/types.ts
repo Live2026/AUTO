@@ -484,14 +484,30 @@ export interface AnalyticsEvent {
   props?: Record<string, unknown>;
 }
 
+export type AuditAction = "insert" | "update" | "delete" | "login" | "logout" | "login_failed" | "export";
+
+/** Un champ modifié : valeur avant → après (lisible). */
+export interface AuditChange {
+  field: string;
+  before?: string;
+  after?: string;
+}
+
+/**
+ * Journal d'activité (R13) — en ajout seul : aucune modification ni suppression, même par le super administrateur.
+ * actorId : id d'employé, "client" (action du client en ligne) ou "system" (tâche automatique). Absent = visiteur.
+ */
 export interface AuditLog {
   id?: number;
   occurredAt: string;
   actorId?: string;
   tableName: string;
   recordId: string;
-  action: "insert" | "update" | "delete";
+  action: AuditAction;
   summary: string;
+  changes?: AuditChange[];
+  /** Pour une connexion échouée : e-mail saisi. */
+  detail?: string;
 }
 
 // ---------- Demandes publiques ----------

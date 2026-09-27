@@ -14,7 +14,7 @@ Automobile • Location • Événementiel — site commercial (SEO) + applicati
 npm install
 npm run dev            # http://localhost:3000
 npm run check          # lint + typecheck + build
-npm run test:e2e       # 18 tests Playwright, dont la vérification de toutes les pages (public + admin × 6 rôles) — après npm run build
+npm run test:e2e       # 20 tests Playwright, dont la vérification de toutes les pages (public + admin × 6 rôles) — après npm run build
 ```
 
 **Administration :** `/admin` — choisir un profil démo, mot de passe `demo`.

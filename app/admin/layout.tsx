@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { ThemeSync } from "@/lib/admin/theme";
+import { THEME_INIT_SCRIPT } from "@/lib/admin/theme-script";
 
 export const metadata: Metadata = {
   title: { default: "Bryan Admin", template: "%s — Bryan Admin" },
@@ -11,5 +13,11 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#c9a227" };
 
 export default function AdminRootLayout({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-dvh bg-[#f4f4f2]">{children}</div>;
+  return (
+    <div className="min-h-dvh bg-canvas">
+      <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      <ThemeSync />
+      {children}
+    </div>
+  );
 }

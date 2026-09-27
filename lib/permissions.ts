@@ -78,6 +78,6 @@ export const ALL_PERMISSIONS: [Permission, string][] = [
   ["finance.read", "Chiffres financiers"],
   ["settings.write", "Paramètres de l'entreprise"],
   ["users.manage", "Utilisateurs & permissions"],
-  ["audit.read", "Journal d'audit"],
+  ["audit.read", "Journal d'activité — consulter"],
   ["notifications.new_requests", "Alertes nouvelles demandes"],
 ];

@@ -78,7 +78,7 @@ export default function AdminVehiclesPage() {
               <p className="text-xs text-muted">{v.reference} · {formatKm(v.mileageKm)}</p>
               <p className="mt-1 text-sm font-semibold">{v.isForSale ? (v.salePrice ? formatXAF(v.salePrice) : "Prix sur demande") : v.rental ? `${formatXAF(v.rental.dailyRate)} / j` : "—"}</p>
               <div className="mt-1.5 flex flex-wrap gap-1">
-                {v.isForSale && <span className="rounded bg-gold-soft px-1.5 py-0.5 text-[10px] font-bold text-[#7a5f0c]">VENTE</span>}
+                {v.isForSale && <span className="rounded bg-gold-soft px-1.5 py-0.5 text-[10px] font-bold text-gold-deep">VENTE</span>}
                 {v.isForRent && <span className="rounded bg-rent-soft px-1.5 py-0.5 text-[10px] font-bold text-rent">LOCATION</span>}
                 {v.isForEvents && <span className="rounded bg-event-soft px-1.5 py-0.5 text-[10px] font-bold text-event">ÉVÉNEMENT</span>}
               </div>

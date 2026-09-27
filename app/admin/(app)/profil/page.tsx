@@ -6,6 +6,7 @@ import { useState, useSyncExternalStore } from "react";
 import { Avatar, PageHeader, useStaff } from "@/components/admin/shell";
 import { Panel } from "@/components/admin/ui";
 import { Button, Field } from "@/components/ui";
+import { ThemeSwitcher } from "@/lib/admin/theme";
 import { BusinessError, mockDb, saveStaff } from "@/lib/db/mock-backend";
 import { formatDateTime } from "@/lib/format";
 import { ROLE_LABELS } from "@/lib/labels";
@@ -62,6 +63,12 @@ export default function ProfilePage() {
         </Panel>
 
         <div className="space-y-6">
+          <Panel title="Apparence">
+            <div className="space-y-3 p-4 text-sm">
+              <p className="text-muted">Choisissez le thème de l&apos;espace de gestion sur cet appareil. « Auto » suit le réglage clair / sombre du téléphone ou de l&apos;ordinateur. Le site public reste en clair.</p>
+              <ThemeSwitcher className="max-w-sm" />
+            </div>
+          </Panel>
           <Panel title="Notifications de cet appareil">
             <div id="notifications" className="space-y-3 p-4 text-sm">
               <p className="flex gap-2"><BellRing className="size-5 shrink-0 text-gold" />Recevez une alerte (son + notification système) dès qu&apos;une demande ou un devis arrive, même si l&apos;onglet est en arrière-plan.</p>

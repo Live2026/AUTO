@@ -15,7 +15,7 @@ import { can } from "@/lib/permissions";
 import type { Banner, BannerPlacement, Promotion, PromotionKind, PromotionScope } from "@/lib/types";
 
 const SCOPE: Record<PromotionScope, [string, string]> = {
-  sale: ["Automobile", "bg-gold-soft text-[#7a5f0c]"],
+  sale: ["Automobile", "bg-gold-soft text-gold-deep"],
   rental: ["Location", "bg-rent-soft text-rent"],
   event: ["Événementiel", "bg-event-soft text-event"],
 };

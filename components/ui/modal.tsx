@@ -32,7 +32,7 @@ export function Modal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={title}>
-      <button type="button" aria-label="Fermer" className="absolute inset-0 bg-ink/60 backdrop-blur-[2px]" onClick={onClose} />
+      <button type="button" aria-label="Fermer" className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" onClick={onClose} />
       <div
         className={`relative max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl ${wide ? "sm:max-w-2xl" : "sm:max-w-lg"}`}
       >

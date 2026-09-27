@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  History,
   BarChart3,
   Bell,
   CalendarClock,
@@ -33,7 +34,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { signOut, useAdminUserId, useSidebarCollapsed } from "@/lib/admin/session";
-import { ensureSeeded, expireHolds, listNotifications, markNotificationsRead, mockDb, setStaffCache } from "@/lib/db/mock-backend";
+import { ThemeSwitcher } from "@/lib/admin/theme";
+import { ensureSeeded, expireHolds, listNotifications, markNotificationsRead, mockDb, recordLogout, setStaffCache } from "@/lib/db/mock-backend";
 import { formatRelative } from "@/lib/format";
 import { ROLE_LABELS } from "@/lib/labels";
 import { can, setRolePermissions } from "@/lib/permissions";
@@ -79,7 +81,8 @@ const NAV: NavItem[] = [
   { href: "/admin/medias", label: "Médiathèque", icon: Images, group: "Opérations", perm: ["media.write"] },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3, group: "Opérations", perm: ["analytics.read"] },
   { href: "/admin/utilisateurs", label: "Utilisateurs", icon: UsersRound, group: "Administration", perm: ["users.manage"] },
-  { href: "/admin/parametres", label: "Paramètres", icon: Settings, group: "Administration", perm: ["settings.write", "audit.read"] },
+  { href: "/admin/journal", label: "Journal d'activité", icon: History, group: "Administration", perm: ["audit.read"] },
+  { href: "/admin/parametres", label: "Paramètres", icon: Settings, group: "Administration", perm: ["settings.write"] },
 ];
 
 export function allowed(user: StaffUser, perm?: Permission | Permission[]) {
@@ -225,7 +228,7 @@ function Frame({ user, children }: { user: StaffUser; children: ReactNode }) {
   return (
     <div className={cn("lg:grid", collapsed ? "lg:grid-cols-[76px_1fr]" : "lg:grid-cols-[264px_1fr]")}>
       {/* Barre latérale desktop */}
-      <aside className="sticky top-0 hidden h-dvh flex-col bg-ink p-3 transition-all lg:flex">
+      <aside className="surface-dark sticky top-0 hidden h-dvh flex-col bg-ink p-3 transition-all lg:flex">
         <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between pr-1")}>
           <Brand compact={collapsed} />
           {!collapsed && (
@@ -247,7 +250,7 @@ function Frame({ user, children }: { user: StaffUser; children: ReactNode }) {
       {menuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button type="button" className="absolute inset-0 bg-black/50" onClick={() => setMenuOpen(false)} aria-label="Fermer le menu" />
-          <aside className="absolute inset-y-0 left-0 flex w-72 flex-col bg-ink p-3">
+          <aside className="surface-dark absolute inset-y-0 left-0 flex w-72 flex-col bg-ink p-3">
             <div className="flex items-center justify-between">
               <Brand />
               <button type="button" onClick={() => setMenuOpen(false)} className="rounded-lg p-2 text-white/70" aria-label="Fermer">
@@ -308,7 +311,9 @@ function Brand({ compact }: { compact?: boolean }) {
 
 function useLogout() {
   const router = useRouter();
+  const userId = useAdminUserId();
   return () => {
+    if (userId) void recordLogout(userId);
     signOut();
     router.replace("/admin/login");
   };
@@ -392,6 +397,10 @@ function ProfileMenu({ user }: { user: StaffUser }) {
                   {ROLE_LABELS[user.roleId]}
                 </span>
               </div>
+            </div>
+            <div className="border-b border-line px-4 py-3">
+              <p className="mb-2 text-xs font-semibold text-muted">Thème</p>
+              <ThemeSwitcher />
             </div>
             <div className="p-1.5 text-sm">
               <MenuLink href="/admin/profil" icon={UserCog} onClick={() => setOpen(false)}>Mon profil & préférences</MenuLink>
@@ -574,7 +583,7 @@ function IncomingAlerts({ user }: { user: StaffUser }) {
   return (
     <div className="fixed top-20 right-4 z-[70] w-[min(92vw,360px)] space-y-2" aria-live="assertive">
       {toasts.map((n) => (
-        <div key={n.id} className="animate-[slide-in_.25s_ease-out] rounded-2xl border border-gold/40 bg-ink p-4 text-white shadow-2xl">
+        <div key={n.id} className="surface-dark animate-[slide-in_.25s_ease-out] rounded-2xl border border-gold/40 bg-ink p-4 text-white shadow-2xl">
           <div className="flex items-start gap-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gold text-ink"><Bell className="size-4" /></span>
             <div className="min-w-0 flex-1">

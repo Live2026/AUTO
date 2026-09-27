@@ -48,7 +48,7 @@ export default function AppointmentsPage() {
             const phone = a.contact?.whatsappE164 ?? a.contact?.phoneE164 ?? "";
             return (
               <div key={a.id} className="flex flex-wrap items-center gap-3 p-4 text-sm">
-                <span className={cn("grid size-10 place-items-center rounded-xl", a.kind === "test_drive" ? "bg-amber-100 text-amber-700" : "bg-gold-soft text-[#7a5f0c]")}>
+                <span className={cn("grid size-10 place-items-center rounded-xl", a.kind === "test_drive" ? "bg-amber-100 text-amber-700" : "bg-gold-soft text-gold-deep")}>
                   <CalendarClock className="size-5" />
                 </span>
                 <div className="min-w-56 flex-1">

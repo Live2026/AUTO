@@ -171,3 +171,50 @@ test("utilisateurs : un responsable ne peut pas gérer les utilisateurs", async 
   await page.goto("/admin/utilisateurs");
   await expect(page.getByText("Accès non autorisé")).toBeVisible();
 });
+
+test("journal d'activité : connexions, échecs et détail des changements (qui a fait quoi)", async ({ page }) => {
+  await page.goto("/admin/login");
+  await page.getByLabel("Mot de passe").fill("mauvais");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await login(page);
+
+  // Une modification d'utilisateur par le super admin : visible avec l'avant / après
+  await page.goto("/admin/utilisateurs");
+  await page.getByText("Junior Batchi").first().click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Modifier" }).click();
+  await dialog.getByLabel("Fonction").fill("Commercial senior");
+  await dialog.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(dialog.getByText("Utilisateur enregistré ✓")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.goto("/admin/journal");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Journal d'activité");
+  const today = page.locator("section").filter({ has: page.getByRole("heading", { name: "Aujourd'hui" }) });
+  await expect(today.getByText("Connexion de Bryan Nkounkou")).toBeVisible();
+  await expect(today.getByText("Tentative de connexion échouée")).toBeVisible();
+  const row = today.getByRole("listitem").filter({ hasText: "Utilisateur modifié : Junior Batchi" });
+  await row.getByRole("button", { name: /changement/ }).click();
+  await expect(row.getByText("Commercial senior")).toBeVisible();
+
+  await page.getByLabel("Type d'action").selectOption("login_failed");
+  await expect(page.getByText("Connexion de Bryan Nkounkou")).toHaveCount(0);
+  await expect(page.getByText("Tentative de connexion échouée").first()).toBeVisible();
+});
+
+test("thème : clair / sombre / auto depuis le menu du profil, mémorisé", async ({ page }) => {
+  await login(page);
+  const html = page.locator("html");
+  await page.getByRole("button", { name: "Menu du profil" }).click();
+  await page.getByRole("radio", { name: "Sombre" }).click();
+  await expect(html).toHaveAttribute("data-theme", "dark");
+  await page.reload();
+  await expect(html).toHaveAttribute("data-theme", "dark");
+  await page.goto("/admin/profil");
+  await page.getByRole("radio", { name: "Clair" }).click();
+  await expect(html).toHaveAttribute("data-theme", "light");
+  // Le site public reste en clair
+  await page.getByRole("radio", { name: "Sombre" }).click();
+  await page.goto("/");
+  await expect(html).not.toHaveAttribute("data-theme", "dark");
+});

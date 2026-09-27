@@ -1,31 +1,27 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { RotateCcw, Users } from "lucide-react";
+import { History, RotateCcw, Users } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Forbidden, PageHeader, allowed, useStaff } from "@/components/admin/shell";
 import { Loading, Panel, Tabs } from "@/components/admin/ui";
 import { Button, Field, cn } from "@/components/ui";
-import { BusinessError, getSettings, listAudit, mockDb, resetDemo, saveSettings, staffById } from "@/lib/db/mock-backend";
-import { formatDateTime } from "@/lib/format";
+import { BusinessError, getSettings, mockDb, resetDemo, saveSettings } from "@/lib/db/mock-backend";
 import { REQUEST_TYPE_LABELS } from "@/lib/labels";
 import { can } from "@/lib/permissions";
 import type { BusinessSettings, Pole, RequestType } from "@/lib/types";
 
-type Tab = "entreprise" | "regles" | "whatsapp" | "audit";
+type Tab = "entreprise" | "regles" | "whatsapp";
 const POLES: ["default" | Pole, string][] = [["default", "Général"], ["sale", "Vente"], ["rental", "Location"], ["event", "Événementiel"]];
 
 export default function SettingsPage() {
   const user = useStaff();
-  const [tab, setTab] = useState<Tab>(can(user.roleId, "settings.write") ? "entreprise" : "audit");
+  const [tab, setTab] = useState<Tab>("entreprise");
   const settings = useLiveQuery(() => getSettings(), []);
-  if (!allowed(user, ["settings.write", "users.manage", "audit.read"])) return <Forbidden />;
+  if (!allowed(user, ["settings.write"])) return <Forbidden />;
   if (!settings) return <Loading />;
-  const tabs: [Tab, string][] = [
-    ...(can(user.roleId, "settings.write") ? ([["entreprise", "Entreprise & canaux"], ["regles", "Règles métier"], ["whatsapp", "Messages WhatsApp"]] as [Tab, string][]) : []),
-    ...(can(user.roleId, "audit.read") ? ([["audit", "Journal d'audit"]] as [Tab, string][]) : []),
-  ];
+  const tabs: [Tab, string][] = [["entreprise", "Entreprise & canaux"], ["regles", "Règles métier"], ["whatsapp", "Messages WhatsApp"]];
   return (
     <>
       <PageHeader
@@ -54,6 +50,13 @@ export default function SettingsPage() {
           <span className="font-semibold">Ouvrir →</span>
         </Link>
       )}
+      {can(user.roleId, "audit.read") && (
+        <Link href="/admin/journal" className="mb-5 flex items-center gap-3 rounded-2xl border border-line bg-white p-4 text-sm hover:border-ink/30">
+          <History className="size-5 text-gold-deep" />
+          <span className="flex-1"><strong>Journal d&apos;activité</strong> — qui a fait quoi : connexions, modifications de paramètres, de droits, de prix…</span>
+          <span className="font-semibold">Ouvrir →</span>
+        </Link>
+      )}
       {tabs.length > 0 && (
         <div className="mb-5">
           <Tabs value={tab} onChange={setTab} items={tabs} />
@@ -62,7 +65,6 @@ export default function SettingsPage() {
       {tab === "entreprise" && <CompanyForm key={JSON.stringify(settings.company)} initial={settings} />}
       {tab === "regles" && <RulesForm initial={settings} />}
       {tab === "whatsapp" && <TemplatesForm initial={settings} />}
-      {tab === "audit" && <AuditLog />}
       {(tab === "entreprise" || tab === "whatsapp") && (
         <p className="mt-4 text-xs text-muted">Mode démo : les numéros et textes du site public restent ceux de la démonstration. Avec Supabase, le site se met à jour à chaque enregistrement.</p>
       )}
@@ -198,24 +200,3 @@ function TemplatesForm({ initial }: { initial: BusinessSettings }) {
   );
 }
 
-function AuditLog() {
-  const audit = useLiveQuery(() => listAudit(300), []);
-  const [q, setQ] = useState("");
-  if (!audit) return <Loading />;
-  const list = audit.filter((a) => !q || `${a.summary} ${a.tableName} ${staffById(a.actorId)?.fullName ?? ""}`.toLowerCase().includes(q.toLowerCase()));
-  return (
-    <Panel title="Journal d'audit (R13)" action={<input className="input h-9 w-56 py-1" placeholder="Filtrer…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Filtrer le journal" />}>
-      <ul className="divide-y divide-line text-sm">
-        {list.length === 0 && <li className="p-4 text-muted">Aucune action.</li>}
-        {list.map((a) => (
-          <li key={a.id} className="flex flex-wrap gap-x-3 p-3">
-            <span className="w-32 text-muted">{formatDateTime(a.occurredAt)}</span>
-            <span className="w-40 font-semibold">{staffById(a.actorId)?.fullName ?? (a.actorId === "system" ? "Client (en ligne)" : "Visiteur / système")}</span>
-            <span className="font-mono text-xs text-muted">{a.tableName}.{a.action}</span>
-            <span className="flex-1">{a.summary}</span>
-          </li>
-        ))}
-      </ul>
-    </Panel>
-  );
-}

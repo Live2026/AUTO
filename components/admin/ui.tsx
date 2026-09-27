@@ -12,10 +12,10 @@ export function QuoteStatusBadge({ status }: { status: QuoteStatus }) {
 }
 
 const TYPE_TONE: Record<RequestType, string> = {
-  sale: "bg-gold-soft text-[#7a5f0c] ring-gold/30",
-  test_drive: "bg-gold-soft text-[#7a5f0c] ring-gold/30",
-  appointment: "bg-gold-soft text-[#7a5f0c] ring-gold/30",
-  trade_in: "bg-gold-soft text-[#7a5f0c] ring-gold/30",
+  sale: "bg-gold-soft text-gold-deep ring-gold/30",
+  test_drive: "bg-gold-soft text-gold-deep ring-gold/30",
+  appointment: "bg-gold-soft text-gold-deep ring-gold/30",
+  trade_in: "bg-gold-soft text-gold-deep ring-gold/30",
   rental: "bg-rent-soft text-rent ring-rent/20",
   event: "bg-event-soft text-event ring-event/20",
   callback: "bg-zinc-100 text-zinc-700 ring-zinc-200",

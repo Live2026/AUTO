@@ -57,6 +57,20 @@ Légende : ✅ fait · 🟡 partiel · ⏭ reporté à une étape suivante (moti
 - **Admin** : écran de connexion en deux colonnes avec présentation, en-têtes de page avec icône et section, cartes du kanban CRM avec couleur du pôle, initiales du responsable (ou « Non affectée ») et ancienneté.
 - **Résultat** : lint ✅ · build ✅ · **17 tests Playwright** ✅ · Lighthouse : SEO 100, bonnes pratiques 100, accessibilité 100, performance 83–99, LCP 2,2–3,4 s.
 
+## Itération 4 (données mockées) — connexion, journal d'activité, thème ✅
+
+**Faut-il un « super super admin » ?** Non. Dans l'application, le **super administrateur** du client gère tout : il crée les comptes, attribue les rôles, règle les droits et les paramètres. Il ne peut pas se retirer lui-même ses droits, et il doit toujours rester au moins un super administrateur actif. Le niveau « technique » au-dessus (hébergement, base de données, sauvegardes) se trouve **hors de l'application**, dans la console Supabase / Vercel, réservée au prestataire. Recommandation : **2 super administrateurs** côté client, pour ne jamais être bloqué.
+
+- **Connexion** : e-mail professionnel + mot de passe, affichage du mot de passe, alerte majuscules, « mot de passe oublié » (réponse neutre), refus des comptes désactivés.
+- **Journal d'activité** (menu Administration, droit « Journal d'activité — consulter ») : qui a fait quoi et quand.
+  - Connexions (avec navigateur et appareil), déconnexions, **tentatives échouées** (e-mail saisi), exports.
+  - Toutes les créations / modifications / suppressions, avec **l'avant → après champ par champ** : statut et responsable des demandes, prix et statut des véhicules, utilisateurs (rôle, activation…), droits accordés / retirés, paramètres, contenus, contacts.
+  - Actions des **clients en ligne** (acceptation de devis, demande de modification) et du **système** (options expirées libérées).
+  - Filtres par personne, module, type d'action, période ; recherche ; **export CSV** (lui-même journalisé) ; lien « Voir tout son historique » depuis la fiche d'un utilisateur.
+  - **En ajout seul** : aucune fonction ne permet de modifier ou d'effacer une ligne, même pour le super administrateur.
+- **Thème clair / sombre / auto** pour l'espace de gestion (menu du profil et page « Mon profil »), mémorisé par appareil ; « Auto » suit le réglage du téléphone ou de l'ordinateur. Le site public reste en clair.
+- **Résultat** : lint ✅ · build ✅ · **20 tests Playwright** ✅.
+
 ## Étapes restantes avant mise en production
 
 ### Étape 2 — Mise à niveau du schéma SQL (½ à 1 jour)
@@ -69,6 +83,7 @@ Légende : ✅ fait · 🟡 partiel · ⏭ reporté à une étape suivante (moti
 | C5 | RPC : anonymisation contact, révision de devis, confirmation de RDV (avec occupation « essai ») |
 | C6 | `requests_notify_new` : **toujours notifier les super administrateurs** (règle alignée sur la démo) |
 | C7 | `banners` : `link_label` ; `media_assets` : `name` ; `appointments` → lien vers l'occupation « essai » |
+| C8 | Journal : colonnes `summary`, `changes`, `detail` ; triggers d'audit étendus (contacts, rendez-vous, contenus, médias, dossiers) ; connexions / échecs via `auth.audit_log_entries` ; politiques RLS sans `update` / `delete` sur `audit_logs` (ajout seul) |
 
 ### Étape 3 — Branchement Supabase (1,5 à 2 semaines)
 D1 catalogue public · D2 remplacement du backend de démo (≈ 60 fonctions) + Realtime · D3 Server Actions + Turnstile + limitation · D4 Supabase Auth + invitations · D5 Storage · D6 revalidation ISR · D7 Edge Function `notify` (Web Push + e-mail) · D8 pg_cron · A12 file hors-ligne admin.

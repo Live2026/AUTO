@@ -11,16 +11,17 @@
 
 import Dexie, { type EntityTable } from "dexie";
 import * as catalog from "../mock/catalog";
-import { DEFAULT_ROLE_PERMISSIONS, can } from "../permissions";
+import { ALL_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, can } from "../permissions";
 import { normalizePhone } from "../phone";
 import { businessYear, formatReference, requestPrefix } from "../rules/references";
 import { addHours, findConflict, isBlocking } from "../rules/rental";
 import { buildSnapshot } from "../rules/quote";
-import { CLOSED_STATUSES, REQUEST_TYPE_LABELS, ROLE_LABELS } from "../labels";
+import { CHANNEL_LABELS, CLOSED_STATUSES, REQUEST_STATUS_LABELS, REQUEST_TYPE_LABELS, ROLE_LABELS, VEHICLE_STATUS_LABELS } from "../labels";
 import type {
   AnalyticsEvent,
   AnalyticsEventName,
   Appointment,
+  AuditChange,
   AuditLog,
   Banner,
   BookingKind,
@@ -139,7 +140,7 @@ export class BusinessError extends Error {
   }
 }
 
-const SEED_VERSION = "3";
+const SEED_VERSION = "5";
 const uid = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
 
@@ -155,9 +156,35 @@ async function nextReference(prefix: string): Promise<string> {
   return formatReference(prefix, year, current + 1);
 }
 
-async function audit(actorId: string | undefined, tableName: string, recordId: string, action: AuditLog["action"], summary: string) {
-  await mockDb.audit.add({ occurredAt: nowIso(), actorId, tableName, recordId, action, summary });
+/** Journal d'activité — ajout seul (aucune fonction de modification ni de suppression n'existe). */
+async function audit(actorId: string | undefined, tableName: string, recordId: string, action: AuditLog["action"], summary: string, changes?: AuditChange[], detail?: string) {
+  await mockDb.audit.add({ occurredAt: nowIso(), actorId, tableName, recordId, action, summary, ...(changes?.length ? { changes } : {}), ...(detail ? { detail } : {}) });
 }
+
+function fmtValue(v: unknown): string | undefined {
+  if (v === undefined || v === null || v === "") return undefined;
+  if (typeof v === "boolean") return v ? "Oui" : "Non";
+  if (typeof v === "number") return v.toLocaleString("fr-FR");
+  if (Array.isArray(v)) return v.length ? v.map((x) => (typeof x === "object" ? JSON.stringify(x) : String(x))).join(", ").slice(0, 160) : undefined;
+  if (typeof v === "object") return JSON.stringify(v).slice(0, 160);
+  return String(v).slice(0, 160);
+}
+
+/** Champs modifiés entre deux versions (comparaison champ par champ). */
+function diff<T extends object>(prev: T | undefined, next: T, labels: Partial<Record<keyof T & string, string>>, format: Partial<Record<keyof T & string, (v: unknown) => string | undefined>> = {}): AuditChange[] {
+  if (!prev) return [];
+  const out: AuditChange[] = [];
+  for (const key of Object.keys(labels) as (keyof T & string)[]) {
+    const a = (prev as Record<string, unknown>)[key];
+    const b = (next as Record<string, unknown>)[key];
+    if (JSON.stringify(a ?? null) === JSON.stringify(b ?? null)) continue;
+    const f = format[key] ?? fmtValue;
+    out.push({ field: labels[key]!, before: f(a), after: f(b) });
+  }
+  return out;
+}
+
+const staffName = (id: unknown) => (id ? staffCache.find((u) => u.id === id)?.fullName ?? String(id) : undefined);
 
 async function notify(n: Omit<StaffNotification, "id" | "createdAt">) {
   await mockDb.notifications.add({ ...n, id: uid(), createdAt: nowIso() });
@@ -251,6 +278,7 @@ async function seed() {
     await mockDb.settings.put({ key: "business", value: catalog.settings });
     await seedCrm();
     await seedAnalytics();
+    await seedAudit();
     await mockDb.meta.put({ key: "seed", value: SEED_VERSION });
   });
 }
@@ -437,6 +465,33 @@ async function seedCrm() {
   const r2 = await mockDb.requests.get("r-2");
   if (r1) await notifyNewRequest(r1, contacts[0]);
   if (r2) await notifyNewRequest(r2, contacts[7]);
+}
+
+/** Historique de démonstration du journal d'activité (qui a fait quoi). */
+async function seedAudit() {
+  const H = 60;
+  const D = 24 * H;
+  const rows: Omit<AuditLog, "id">[] = [
+    { occurredAt: ago(13 * D), actorId: "u-admin", tableName: "auth", recordId: "u-admin", action: "login", summary: "Connexion de Bryan Nkounkou", detail: "Chrome · Windows" },
+    { occurredAt: ago(13 * D - 5), actorId: "u-admin", tableName: "staff_profiles", recordId: "u-auto", action: "insert", summary: "Utilisateur créé : Christelle Moukala (Responsable automobile)" },
+    { occurredAt: ago(13 * D - 8), actorId: "u-admin", tableName: "staff_profiles", recordId: "u-rental", action: "insert", summary: "Utilisateur créé : Patrick Loemba (Responsable location)" },
+    { occurredAt: ago(13 * D - 11), actorId: "u-admin", tableName: "staff_profiles", recordId: "u-events", action: "insert", summary: "Utilisateur créé : Sandrine Makosso (Responsable événementiel)" },
+    { occurredAt: ago(12 * D), actorId: "u-admin", tableName: "staff_profiles", recordId: "u-sales", action: "insert", summary: "Utilisateur créé : Junior Batchi (Commercial)" },
+    { occurredAt: ago(12 * D - 3), actorId: "u-admin", tableName: "staff_profiles", recordId: "u-compta", action: "insert", summary: "Utilisateur créé : Aimée Tchicaya (Comptable)" },
+    { occurredAt: ago(11 * D), actorId: "u-admin", tableName: "role_permissions", recordId: "sales", action: "update", summary: "Droits du rôle Commercial modifiés", changes: [{ field: "Droit accordé", after: "Devis — créer / envoyer" }] },
+    { occurredAt: ago(9 * D), actorId: "u-admin", tableName: "business_settings", recordId: "business", action: "update", summary: "Paramètres de l'entreprise modifiés", changes: [{ field: "Entreprise › horaires", before: "Lun–Sam 8h–18h", after: "Lun–Sam 8h–19h" }, { field: "Durée d'une option (h)", before: "48", after: "24" }] },
+    { occurredAt: ago(6 * D), actorId: undefined, tableName: "auth", recordId: "-", action: "login_failed", summary: "Tentative de connexion échouée", detail: "compta@bryan.cg" },
+    { occurredAt: ago(6 * D - 2), actorId: "u-compta", tableName: "auth", recordId: "u-compta", action: "login", summary: "Connexion de Aimée Tchicaya", detail: "Safari · iOS (mobile)" },
+    { occurredAt: ago(4 * D), actorId: "u-auto", tableName: "auth", recordId: "u-auto", action: "login", summary: "Connexion de Christelle Moukala", detail: "Chrome · Android (mobile)" },
+    { occurredAt: ago(4 * D - 6), actorId: "u-auto", tableName: "vehicles", recordId: "veh-prado-2023", action: "update", summary: "Véhicule Toyota Land Cruiser Prado 2023 modifié (prix modifié)", changes: [{ field: "Prix de vente", before: "39 500 000 FCFA", after: "38 000 000 FCFA" }] },
+    { occurredAt: ago(3 * D), actorId: "u-rental", tableName: "auth", recordId: "u-rental", action: "login", summary: "Connexion de Patrick Loemba", detail: "Chrome · Windows" },
+    { occurredAt: ago(3 * D - 20), actorId: "u-rental", tableName: "promotions", recordId: "promo-weekend", action: "update", summary: "Promotion Week-end modifié(e)", changes: [{ field: "Remise (%)", before: "10", after: "15" }] },
+    { occurredAt: ago(2 * D), actorId: "u-admin", tableName: "staff_profiles", recordId: "u-sales", action: "update", summary: "Utilisateur modifié : Junior Batchi", changes: [{ field: "Téléphone", before: "+242064444440", after: "+242064444444" }] },
+    { occurredAt: ago(D + 3 * H), actorId: "u-events", tableName: "auth", recordId: "u-events", action: "login", summary: "Connexion de Sandrine Makosso", detail: "Edge · Windows" },
+    { occurredAt: ago(D + 2 * H), actorId: "system", tableName: "vehicle_bookings", recordId: "-", action: "update", summary: "Option expirée libérée automatiquement (veh-hiace-2022)", changes: [{ field: "Statut", before: "Option", after: "Annulée (délai dépassé)" }] },
+    { occurredAt: ago(5 * H), actorId: "client", tableName: "quotes", recordId: "-", action: "update", summary: "Modification demandée en ligne sur un devis", changes: [{ field: "Message du client", after: "Pouvez-vous ajouter une décoration florale ?" }] },
+  ];
+  await mockDb.audit.bulkAdd(rows);
 }
 
 async function seedAnalytics() {
@@ -674,7 +729,21 @@ export async function updateRequest(
         await notify({ recipientId: next.assignedTo, kind: "assigned", title: `Demande ${next.reference} vous a été affectée`, link: `/admin/crm/${next.id}`, requestId: next.id });
       }
     }
-    await audit(actorId, "requests", id, "update", `Demande ${next.reference} : ${prev.status} → ${next.status}`);
+    const changes = diff(prev, next, { status: "Statut", assignedTo: "Responsable", lostReason: "Motif de perte", archivedAt: "Archivée le" }, {
+      status: (v) => (v ? REQUEST_STATUS_LABELS[v as CrmRequest["status"]] : undefined),
+      assignedTo: staffName,
+      archivedAt: (v) => (v ? new Date(String(v)).toLocaleString("fr-FR") : undefined),
+    });
+    if (changes.length) {
+      const summary = !prev.archivedAt && next.archivedAt
+        ? `Demande ${next.reference} archivée`
+        : prev.status !== next.status
+          ? `Demande ${next.reference} : ${REQUEST_STATUS_LABELS[prev.status]} → ${REQUEST_STATUS_LABELS[next.status]}`
+          : prev.assignedTo !== next.assignedTo
+            ? `Demande ${next.reference} affectée à ${staffName(next.assignedTo) ?? "personne"}`
+            : `Demande ${next.reference} modifiée`;
+      await audit(actorId, "requests", id, "update", summary, changes);
+    }
     return next;
   });
 }
@@ -691,6 +760,7 @@ export async function createManualRequest(
 ): Promise<string> {
   const result = await submitPublicRequest({ ...input, consent: true, channel: input.channel });
   const req = await mockDb.requests.where("reference").equals(result.reference).first();
+  if (req) await audit(actorId, "requests", req.id, "insert", `Demande ${req.reference} saisie manuellement (${REQUEST_TYPE_LABELS[req.type]}, ${CHANNEL_LABELS[input.channel]}) pour ${input.fullName}`);
   if (req && !req.assignedTo) await updateRequest(req.id, { assignedTo: actorId }, actorId);
   return req!.id;
 }
@@ -719,7 +789,10 @@ export async function expireHolds(): Promise<number> {
   const expired = await mockDb.bookings
     .filter((b) => b.status === "hold" && !!b.holdExpiresAt && new Date(b.holdExpiresAt).getTime() < now)
     .toArray();
-  for (const b of expired) await mockDb.bookings.put({ ...b, status: "cancelled", cancelReason: "hold_expired" });
+  for (const b of expired) {
+    await mockDb.bookings.put({ ...b, status: "cancelled", cancelReason: "hold_expired" });
+    await audit("system", "vehicle_bookings", b.id, "update", `Option expirée libérée automatiquement (${b.vehicleId})`, [{ field: "Statut", before: "Option", after: "Annulée (délai dépassé)" }]);
+  }
   return expired.length;
 }
 
@@ -932,12 +1005,14 @@ export async function respondToQuote(token: string, action: "accept" | "request_
     if (action === "accept") {
       if (!name?.trim()) throw new BusinessError("name_required", "Indiquez votre nom pour accepter.");
       await mockDb.quotes.put({ ...q, status: "accepted", acceptedAt: nowIso(), acceptedByName: name.trim(), updatedAt: nowIso() });
-      if (req) await updateRequest(req.id, { status: "confirmed" }, "system");
+      if (req) await updateRequest(req.id, { status: "confirmed" }, "client");
+      await audit("client", "quotes", q.id, "update", `Devis ${q.reference} v${q.currentVersion} accepté en ligne par ${name.trim()}`, [{ field: "Statut", before: "Envoyé", after: "Accepté" }]);
       await addNote(q.requestId, "system", `Devis ${q.reference} v${q.currentVersion} accepté en ligne par ${name.trim()}`);
     } else {
       if (!message?.trim()) throw new BusinessError("message_required", "Décrivez la modification souhaitée.");
       await mockDb.quotes.put({ ...q, status: "change_requested", changeRequestMessage: message.trim().slice(0, 2000), updatedAt: nowIso() });
-      if (req) await updateRequest(req.id, { status: "in_discussion" }, "system");
+      if (req) await updateRequest(req.id, { status: "in_discussion" }, "client");
+      await audit("client", "quotes", q.id, "update", `Modification demandée en ligne sur le devis ${q.reference}`, [{ field: "Message du client", after: message.trim().slice(0, 160) }]);
       await addNote(q.requestId, "system", `Modification demandée sur ${q.reference} : ${message.trim()}`);
     }
     if (req?.assignedTo) {
@@ -990,7 +1065,15 @@ export async function saveVehicle(vehicle: Vehicle, actorId: string): Promise<Ve
   if (next.status !== "draft" && !next.publishedAt) next.publishedAt = nowIso();
   if (next.status === "sold" && prev?.status !== "sold") next.soldAt = nowIso();
   await mockDb.vehicles.put(next);
-  await audit(actorId, "vehicles", next.id, prev ? "update" : "insert", `${next.brand} ${next.model} ${next.year}${prev && prev.salePrice !== next.salePrice ? ` — prix ${prev.salePrice ?? "—"} → ${next.salePrice ?? "—"}` : ""}`);
+  const changes = diff(prev, next, {
+    status: "Statut", salePrice: "Prix de vente", brand: "Marque", model: "Modèle", year: "Année", mileageKm: "Kilométrage", categoryId: "Catégorie",
+    isFeatured: "Mis en avant", rentable: "Disponible à la location", images: "Photos", seoTitle: "Titre SEO", seoDescription: "Description SEO", description: "Description",
+  } as Partial<Record<keyof Vehicle & string, string>>, {
+    status: (v) => (v ? VEHICLE_STATUS_LABELS[v as Vehicle["status"]] : undefined),
+    salePrice: (v) => (typeof v === "number" ? `${v.toLocaleString("fr-FR")} FCFA` : undefined),
+    images: (v) => (Array.isArray(v) ? `${v.length} photo(s)` : undefined),
+  } as Partial<Record<keyof Vehicle & string, (v: unknown) => string | undefined>>);
+  await audit(actorId, "vehicles", next.id, prev ? "update" : "insert", `Véhicule ${next.brand} ${next.model} ${next.year} ${prev ? "modifié" : "ajouté"}${prev && prev.salePrice !== next.salePrice ? " (prix modifié)" : ""}`, changes);
   return next;
 }
 
@@ -1098,12 +1181,21 @@ const CONTENT_LABELS: Record<ContentTable, string> = {
   banners: "Bannière",
 };
 
+const FIELD_LABELS: Record<string, string> = {
+  name: "Nom", title: "Titre", subtitle: "Sous-titre", label: "Libellé", slug: "Adresse (URL)", description: "Description", isActive: "Actif", isPublished: "Publié",
+  startsAt: "Début", endsAt: "Fin", discountPercent: "Remise (%)", imageUrl: "Image", images: "Photos", videoUrl: "Vidéo", linkUrl: "Lien", linkLabel: "Texte du lien",
+  price: "Prix", priceFrom: "Prix à partir de", sortOrder: "Ordre", tagline: "Accroche", icon: "Icône", guests: "Invités", services: "Prestations", items: "Contenu",
+  placement: "Emplacement", rule: "Règle", appliesTo: "S'applique à",
+};
+
 /** Création / modification d'un contenu (équivalent : upsert Supabase + RLS). */
 export async function saveContent<T extends { id: string }>(table: ContentTable, row: T, actorId: string, label?: string): Promise<T> {
   const t = mockDb.table(table);
-  const prev = await t.get(row.id);
+  const prev = (await t.get(row.id)) as T | undefined;
   await t.put(row);
-  await audit(actorId, table, row.id, prev ? "update" : "insert", `${CONTENT_LABELS[table]} ${label ?? ""} ${prev ? "modifié(e)" : "créé(e)"}`.replace(/\s+/g, " ").trim());
+  const keys = Array.from(new Set([...Object.keys(prev ?? {}), ...Object.keys(row)])).filter((k) => !["id", "createdAt", "updatedAt"].includes(k));
+  const changes = diff(prev as Record<string, unknown> | undefined, row as unknown as Record<string, unknown>, Object.fromEntries(keys.map((k) => [k, FIELD_LABELS[k] ?? k])));
+  await audit(actorId, table, row.id, prev ? "update" : "insert", `${CONTENT_LABELS[table]} ${label ?? ""} ${prev ? "modifié(e)" : "créé(e)"}`.replace(/\s+/g, " ").trim(), changes);
   return row;
 }
 
@@ -1116,9 +1208,42 @@ export async function getSettings(): Promise<BusinessSettings> {
   return (await mockDb.settings.get("business"))?.value ?? catalog.settings;
 }
 
+const SETTINGS_LABELS: Record<keyof BusinessSettings, string> = {
+  company: "Entreprise", contactPhones: "Numéros d'appel", whatsappNumbers: "Numéros WhatsApp", socialLinks: "Réseaux sociaux", whatsappTemplates: "Modèles WhatsApp",
+  rentalBufferHours: "Battement entre locations (h)", holdDurationHours: "Durée d'une option (h)", quoteValidityDays: "Validité des devis (jours)", quoteTaxRate: "TVA des devis",
+  slaNewRequestMinutes: "Délai de prise en charge (min)", defaultAssignees: "Affectations automatiques", lostReasons: "Motifs de perte", cities: "Villes",
+};
+
+const SETTINGS_SUBLABELS: Record<string, string> = {
+  name: "nom", tagline: "slogan", address: "adresse", city: "ville", hours: "horaires", email: "e-mail",
+  default: "général", sale: "vente", rental: "location", event: "événementiel", request: "demande",
+  facebook: "Facebook", instagram: "Instagram", tiktok: "TikTok",
+};
+
 export async function saveSettings(value: BusinessSettings, actorId: string): Promise<void> {
+  const prev = (await mockDb.settings.get("business"))?.value;
   await mockDb.settings.put({ key: "business", value });
-  await audit(actorId, "business_settings", "business", "update", "Paramètres de l'entreprise modifiés");
+  // Détail sous-champ par sous-champ pour les blocs (entreprise, numéros…)
+  const changes: AuditChange[] = [];
+  if (prev) {
+    for (const key of Object.keys(SETTINGS_LABELS) as (keyof BusinessSettings)[]) {
+      const a = prev[key] as unknown;
+      const b = value[key] as unknown;
+      if (JSON.stringify(a ?? null) === JSON.stringify(b ?? null)) continue;
+      if (a && b && typeof a === "object" && !Array.isArray(a)) {
+        for (const sub of new Set([...Object.keys(a), ...Object.keys(b as object)])) {
+          const x = (a as Record<string, unknown>)[sub];
+          const y = (b as Record<string, unknown>)[sub];
+          if (JSON.stringify(x ?? null) !== JSON.stringify(y ?? null)) {
+            changes.push({ field: `${SETTINGS_LABELS[key]} › ${key === "defaultAssignees" ? REQUEST_TYPE_LABELS[sub as RequestType] ?? sub : SETTINGS_SUBLABELS[sub] ?? sub}`, before: key === "defaultAssignees" ? staffName(x) : fmtValue(x), after: key === "defaultAssignees" ? staffName(y) : fmtValue(y) });
+          }
+        }
+      } else {
+        changes.push({ field: SETTINGS_LABELS[key], before: fmtValue(a), after: fmtValue(b) });
+      }
+    }
+  }
+  await audit(actorId, "business_settings", "business", "update", "Paramètres de l'entreprise modifiés", changes);
 }
 
 // Personnel & rôles (§42 : permissions configurables)
@@ -1133,13 +1258,33 @@ export async function saveStaff(user: StaffUser, actorId: string): Promise<void>
     if (admins.length === 0) throw new BusinessError("last_admin", "Impossible : il doit rester au moins un super administrateur actif.");
   }
   await mockDb.staff.put({ ...user, email, createdAt: prev?.createdAt ?? user.createdAt ?? nowIso(), invitedBy: prev?.invitedBy ?? user.invitedBy ?? actorId });
-  await audit(actorId, "staff_profiles", user.id, prev ? "update" : "insert", `${prev ? "Employé modifié" : "Employé invité"} : ${user.fullName} (${ROLE_LABELS[user.roleId]}${user.isActive ? "" : ", désactivé"})`);
+  const changes = diff(prev, { ...user, email }, { fullName: "Nom", email: "E-mail", phone: "Téléphone", jobTitle: "Poste", roleId: "Rôle", isActive: "Compte actif" }, {
+    roleId: (v) => (v ? ROLE_LABELS[v as RoleId] : undefined),
+  });
+  const summary = !prev
+    ? `Utilisateur créé : ${user.fullName} (${ROLE_LABELS[user.roleId]})`
+    : prev.isActive && !user.isActive
+      ? `Utilisateur désactivé : ${user.fullName}`
+      : !prev.isActive && user.isActive
+        ? `Utilisateur réactivé : ${user.fullName}`
+        : prev.roleId !== user.roleId
+          ? `Rôle de ${user.fullName} : ${ROLE_LABELS[prev.roleId]} → ${ROLE_LABELS[user.roleId]}`
+          : `Utilisateur modifié : ${user.fullName}`;
+  await audit(actorId, "staff_profiles", user.id, prev ? "update" : "insert", summary, changes);
 }
 
 export async function saveRole(role: RoleDef, actorId: string): Promise<void> {
   if (role.id === "admin") throw new BusinessError("locked", "Les droits du super administrateur ne sont pas modifiables.");
+  const prev = await mockDb.roles.get(role.id);
   await mockDb.roles.put(role);
-  await audit(actorId, "role_permissions", role.id, "update", `Permissions du rôle ${role.label} : ${role.permissions.length} droit(s)`);
+  const label = (p: string) => ALL_PERMISSIONS.find(([k]) => k === p)?.[1] ?? p;
+  const before = new Set(prev?.permissions ?? []);
+  const after = new Set(role.permissions);
+  const changes: AuditChange[] = [
+    ...role.permissions.filter((p) => !before.has(p)).map((p) => ({ field: "Droit accordé", after: label(p) })),
+    ...(prev?.permissions ?? []).filter((p) => !after.has(p)).map((p) => ({ field: "Droit retiré", before: label(p) })),
+  ];
+  await audit(actorId, "role_permissions", role.id, "update", `Droits du rôle ${role.label} modifiés (${role.permissions.length} droit(s))`, changes);
 }
 
 // Médiathèque (§49)
@@ -1225,14 +1370,39 @@ export async function updateContact(contact: Contact, actorId: string): Promise<
   if (!phone) throw new BusinessError("invalid_phone", "Numéro de téléphone invalide.");
   const clash = await mockDb.contacts.where("phoneE164").equals(phone).first();
   if (clash && clash.id !== contact.id) throw new BusinessError("phone_taken", `Ce numéro appartient déjà à ${clash.fullName}.`);
-  await mockDb.contacts.put({ ...contact, phoneE164: phone, whatsappE164: normalizePhone(contact.whatsappE164) ?? undefined, updatedAt: nowIso() });
-  await audit(actorId, "contacts", contact.id, "update", `Contact modifié : ${contact.fullName}`);
+  const prev = await mockDb.contacts.get(contact.id);
+  const next = { ...contact, phoneE164: phone, whatsappE164: normalizePhone(contact.whatsappE164) ?? undefined, updatedAt: nowIso() };
+  await mockDb.contacts.put(next);
+  await audit(actorId, "contacts", contact.id, "update", `Contact modifié : ${contact.fullName}`, diff(prev, next, { fullName: "Nom", phoneE164: "Téléphone", whatsappE164: "WhatsApp", email: "E-mail", notes: "Notes" }));
 }
 
 /** Dernière connexion (Supabase Auth : auth.users.last_sign_in_at). */
 export async function recordLogin(userId: string): Promise<void> {
   const u = await mockDb.staff.get(userId);
-  if (u) await mockDb.staff.put({ ...u, lastLoginAt: nowIso() });
+  if (!u) return;
+  await mockDb.staff.put({ ...u, lastLoginAt: nowIso() });
+  await audit(userId, "auth", userId, "login", `Connexion de ${u.fullName}`, undefined, typeof navigator !== "undefined" ? describeDevice(navigator.userAgent) : undefined);
+}
+
+export async function recordLogout(userId: string): Promise<void> {
+  const u = await mockDb.staff.get(userId);
+  await audit(userId, "auth", userId, "logout", `Déconnexion de ${u?.fullName ?? userId}`);
+}
+
+/** Tentative échouée (Supabase : auth.audit_log_entries). L'e-mail saisi est conservé pour repérer les abus. */
+export async function recordFailedLogin(email: string, reason: "bad_credentials" | "disabled"): Promise<void> {
+  const u = await mockDb.staff.where("email").equals(email.trim().toLowerCase()).first();
+  await audit(undefined, "auth", u?.id ?? "-", "login_failed", reason === "disabled" ? `Connexion refusée : compte désactivé (${u?.fullName ?? email})` : `Tentative de connexion échouée`, undefined, email.trim().toLowerCase().slice(0, 120));
+}
+
+export async function recordAuditExport(actorId: string, count: number): Promise<void> {
+  await audit(actorId, "audit_logs", "-", "export", `Export du journal d'activité (${count} ligne(s))`);
+}
+
+function describeDevice(ua: string): string {
+  const os = /Android/i.test(ua) ? "Android" : /iPhone|iPad/i.test(ua) ? "iOS" : /Windows/i.test(ua) ? "Windows" : /Mac OS/i.test(ua) ? "macOS" : /Linux/i.test(ua) ? "Linux" : "Autre";
+  const browser = /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "Navigateur";
+  return `${browser} · ${os}${/Mobi/i.test(ua) ? " (mobile)" : ""}`;
 }
 
 /** Démo : simule l'envoi d'un lien de réinitialisation (Supabase Auth : resetPasswordForEmail). */

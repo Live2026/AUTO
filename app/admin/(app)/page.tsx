@@ -106,7 +106,7 @@ export default function DashboardPage() {
   return (
     <>
       {/* En-tête : qui est connecté (nom, rôle) */}
-      <section className="mb-6 overflow-hidden rounded-3xl bg-ink text-white">
+      <section className="surface-dark mb-6 overflow-hidden rounded-3xl bg-ink text-white">
         <div className="flex flex-wrap items-center gap-4 p-5 sm:p-6 [background:radial-gradient(60%_120%_at_100%_0%,rgba(201,162,39,0.25),transparent_70%)]">
           <Avatar user={user} size="lg" />
           <div className="min-w-0 flex-1">
@@ -141,7 +141,7 @@ export default function DashboardPage() {
       </section>
 
       {toHandle.length > 0 && (
-        <Link href="/admin/crm?status=a-traiter" className="mb-6 flex items-center gap-3 rounded-2xl bg-ink p-4 text-white">
+        <Link href="/admin/crm?status=a-traiter" className="surface-dark mb-6 flex items-center gap-3 rounded-2xl bg-ink p-4 text-white">
           <Inbox className="size-6 text-gold" />
           <p className="flex-1 text-sm"><strong>{toHandle.length} demande{toHandle.length > 1 ? "s" : ""}</strong> à traiter{can(user.roleId, "crm.read_all") ? "" : " (qui vous sont affectées)"}</p>
           <ArrowRight className="size-5" />
@@ -154,7 +154,7 @@ export default function DashboardPage() {
           <StatCard label="Demandes d'achat ouvertes" value={saleReqs} />
           <StatCard label="Rendez-vous / essais" value={upcomingAppointments} />
           <StatCard label="Ventes (30 j)" value={soldRecent.length} />
-          <StatCard label="CA ventes (30 j)" value={formatXAF(saleRevenue)} tone="text-[#7a5f0c]" />
+          <StatCard label="CA ventes (30 j)" value={formatXAF(saleRevenue)} tone="text-gold-deep" />
         </PoleRow>
         <PoleRow title="Location" icon={<KeyRound className="size-4 text-rent" />}>
           <StatCard accent="bg-[#0b7fa3]" label="Disponibles maintenant" value={`${rentFleet.filter((v) => !busyNow.has(v.id)).length} / ${rentFleet.length}`} />

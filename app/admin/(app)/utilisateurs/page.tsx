@@ -2,6 +2,7 @@
 
 import { useLiveQuery } from "dexie-react-hooks";
 import { KeyRound, Mail, MessageCircle, Pencil, Phone, Power, Search, ShieldCheck, UserPlus } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { Avatar, Forbidden, PageHeader, useStaff } from "@/components/admin/shell";
 import { Loading, StatCard, Tabs } from "@/components/admin/ui";
@@ -220,6 +221,7 @@ function UserDetail({ user, activity, openRequests, onClose }: { user: StaffUser
                   {activity.length === 0 && <li>Aucune action enregistrée.</li>}
                   {activity.map((a) => <li key={a.id}>{formatDateTime(a.occurredAt)} — <span className="text-ink">{a.summary}</span></li>)}
                 </ul>
+                <Link href={`/admin/journal?qui=${user.id}`} className="mt-2 inline-block text-xs font-semibold text-gold-deep hover:underline">Voir tout son historique →</Link>
               </div>
             </div>
           </>

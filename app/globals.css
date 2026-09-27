@@ -4,11 +4,15 @@
 @theme inline {
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
 
+/* Couleurs en variables (non « inline ») : le thème sombre de l'espace de gestion les redéfinit. */
+@theme {
   --color-ink: #0b1220;
   --color-ink-2: #141c2e;
   --color-ink-3: #1f2a40;
   --color-paper: #f7f6f3;
+  --color-canvas: #f4f4f2;
   --color-line: #e7e4dd;
   --color-muted: #5b6270;
 
@@ -61,6 +65,129 @@ body {
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Thème sombre — espace de gestion uniquement (html[data-theme="dark"]).
+   Principe : « ink » = couleur du texte, « white » = couleur des surfaces ;
+   en sombre, les deux s'inversent. Les zones qui doivent rester foncées
+   (barre latérale, panneau de connexion, alertes) portent .surface-dark.
+   --------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-ink: #e8ecf3;
+  --color-ink-2: #dde2ea;
+  --color-ink-3: #c7ceda;
+  --color-white: #151c29;
+  --color-paper: #0f1520;
+  --color-canvas: #0b1018;
+  --color-line: #273145;
+  --color-muted: #9aa4b6;
+  --color-gold-soft: rgb(201 162 39 / 0.16);
+  --color-gold-deep: #e2bd45;
+  --color-rent-soft: rgb(14 116 144 / 0.24);
+  --color-event-soft: rgb(190 24 93 / 0.24);
+
+  /* Pastilles de statut : fonds teintés discrets, textes éclaircis */
+  --color-emerald-50: rgb(16 185 129 / 0.14);
+  --color-emerald-100: rgb(16 185 129 / 0.2);
+  --color-emerald-200: rgb(16 185 129 / 0.35);
+  --color-emerald-700: #6ee7b7;
+  --color-emerald-800: #a7f3d0;
+  --color-rose-50: rgb(244 63 94 / 0.14);
+  --color-rose-100: rgb(244 63 94 / 0.2);
+  --color-rose-200: rgb(244 63 94 / 0.35);
+  --color-rose-700: #fda4af;
+  --color-rose-800: #fecdd3;
+  --color-amber-50: rgb(245 158 11 / 0.14);
+  --color-amber-100: rgb(245 158 11 / 0.2);
+  --color-amber-200: rgb(245 158 11 / 0.35);
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fde68a;
+  --color-sky-50: rgb(14 165 233 / 0.14);
+  --color-sky-100: rgb(14 165 233 / 0.2);
+  --color-sky-200: rgb(14 165 233 / 0.35);
+  --color-sky-700: #7dd3fc;
+  --color-violet-50: rgb(139 92 246 / 0.16);
+  --color-violet-100: rgb(139 92 246 / 0.22);
+  --color-violet-200: rgb(139 92 246 / 0.38);
+  --color-violet-700: #c4b5fd;
+  --color-zinc-50: rgb(255 255 255 / 0.04);
+  --color-zinc-100: rgb(255 255 255 / 0.07);
+  --color-zinc-200: #2d374b;
+  --color-zinc-400: #6b7588;
+  --color-zinc-700: #cbd2dd;
+  --color-fuchsia-50: rgb(217 70 239 / 0.14);
+  --color-fuchsia-100: rgb(217 70 239 / 0.2);
+  --color-fuchsia-200: rgb(217 70 239 / 0.35);
+  --color-fuchsia-700: #f0abfc;
+  --color-fuchsia-800: #f5d0fe;
+  --color-green-50: rgb(34 197 94 / 0.14);
+  --color-green-100: rgb(34 197 94 / 0.2);
+  --color-green-200: rgb(34 197 94 / 0.35);
+  --color-green-700: #86efac;
+  --color-green-800: #bbf7d0;
+  --color-indigo-50: rgb(99 102 241 / 0.14);
+  --color-indigo-100: rgb(99 102 241 / 0.2);
+  --color-indigo-200: rgb(99 102 241 / 0.35);
+  --color-indigo-700: #a5b4fc;
+  --color-indigo-800: #c7d2fe;
+  --color-orange-50: rgb(249 115 22 / 0.14);
+  --color-orange-100: rgb(249 115 22 / 0.2);
+  --color-orange-200: rgb(249 115 22 / 0.35);
+  --color-orange-700: #fdba74;
+  --color-orange-800: #fed7aa;
+  --color-violet-800: #ddd6fe;
+  --color-sky-800: #bae6fd;
+  --color-zinc-300: #3a4457;
+  --color-zinc-500: #8a93a5;
+  --color-zinc-600: #aab2c0;
+}
+
+[data-theme="dark"] .text-rent {
+  color: #67cde4;
+}
+[data-theme="dark"] .text-event {
+  color: #f472b6;
+}
+
+/* Zones qui restent foncées : on y rétablit les couleurs du thème clair. */
+[data-theme="dark"] .surface-dark,
+[data-theme="dark"] :is(.bg-gold, .bg-gold-2, .bg-rent, .bg-event, .bg-whatsapp, .bg-rose-600, .bg-rose-700, .bg-emerald-600, .bg-emerald-700, .bg-sky-600, .bg-violet-600, .bg-amber-500),
+[data-theme="dark"] :is([class*=" bg-black/"], [class^="bg-black/"], [class*="from-black"]) {
+  --color-white: #ffffff;
+  --color-ink: #0b1220;
+  --color-ink-3: #1f2a40;
+}
+[data-theme="dark"] .surface-dark {
+  --color-muted: #9aa4b6;
+  --color-line: #273145;
+}
+
+/* Cartes volontairement blanches (illustrations) : couleurs du thème clair. */
+[data-theme="dark"] .surface-light {
+  --color-white: #ffffff;
+  --color-ink: #0b1220;
+  --color-muted: #5b6270;
+  --color-gold-deep: #8a6a0a;
+  --color-sky-100: #e0f2fe;
+  --color-sky-700: #0369a1;
+  --color-emerald-700: #047857;
+}
+
+/* Survols légers : un voile clair plutôt que sombre. */
+[data-theme="dark"] .bg-black\/5,
+[data-theme="dark"] .hover\:bg-black\/5:hover {
+  background-color: rgb(255 255 255 / 0.06);
+}
+[data-theme="dark"] .bg-black\/10 {
+  background-color: rgb(255 255 255 / 0.1);
+}
+[data-theme="dark"] .shadow-black\/5 {
+  --tw-shadow-color: rgb(0 0 0 / 0.4);
+}
+[data-theme="dark"] img {
+  filter: brightness(0.94);
 }
 
 @media print {
