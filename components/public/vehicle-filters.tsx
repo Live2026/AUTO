@@ -93,6 +93,7 @@ export function VehicleFilters({ categories, brands, total }: { categories: Vehi
           </button>
         ))}
       </div>
+      <div className="card space-y-3 p-3 sm:p-4">
       <div className="flex gap-2">
         <input
           className="input"
@@ -109,6 +110,7 @@ export function VehicleFilters({ categories, brands, total }: { categories: Vehi
         </Button>
       </div>
       <div className={cn(open ? "block" : "hidden", "lg:block")}>{selects}</div>
+      </div>
       <div className="flex items-center justify-between text-sm">
         <p className="text-muted">
           <strong className="text-ink">{total}</strong> véhicule{total > 1 ? "s" : ""}

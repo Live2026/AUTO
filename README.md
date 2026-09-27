@@ -14,11 +14,11 @@ Automobile • Location • Événementiel — site commercial (SEO) + applicati
 npm install
 npm run dev            # http://localhost:3000
 npm run check          # lint + typecheck + build
-npm run test:e2e       # 8 parcours Playwright (mobile) — lance le serveur de prod automatiquement (après npm run build)
+npm run test:e2e       # 17 tests Playwright, dont la vérification de toutes les pages (public + admin × 6 rôles) — après npm run build
 ```
 
 **Administration :** `/admin` — choisir un profil démo, mot de passe `demo`.
-Chaque profil (administrateur, responsables auto/location/événementiel, commercial, comptable) voit un menu et des droits différents (R12).
+Chaque profil (super administrateur, responsables auto/location/événementiel, commercial, comptable) voit un menu et des droits différents (R12). Le super administrateur ajoute les utilisateurs dans **Administration → Utilisateurs**.
 **Devis de démonstration :** `/devis/demo-devis-mariage`. **Réinitialiser la démo :** Admin → Paramètres.
 
 ## Ce qui est livré

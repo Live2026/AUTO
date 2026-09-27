@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Fuel, Gauge, Settings2, Users } from "lucide-react";
+import { ArrowUpRight, Fuel, Gauge, Settings2, Users } from "lucide-react";
 import { hasPriceDrop, isNewArrival, vehicleTitle } from "@/lib/data/catalog";
 import { formatKm, formatXAF, percentOff } from "@/lib/format";
 import { FUEL_LABELS, GEARBOX_LABELS } from "@/lib/labels";
@@ -61,14 +61,17 @@ export function VehicleCard({ vehicle, href }: { vehicle: Vehicle; href?: string
           </Link>
         </h3>
         {vehicle.version && <p className="text-sm text-muted">{vehicle.version}</p>}
-        <ul className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[13px] text-zinc-600">
-          <li className="flex items-center gap-1.5"><Gauge className="size-3.5" />{formatKm(vehicle.mileageKm)}</li>
-          <li className="flex items-center gap-1.5"><Fuel className="size-3.5" />{FUEL_LABELS[vehicle.fuel]}</li>
-          <li className="flex items-center gap-1.5"><Settings2 className="size-3.5" />{GEARBOX_LABELS[vehicle.gearbox]}</li>
-          <li className="flex items-center gap-1.5"><Users className="size-3.5" />{vehicle.seats} places</li>
+        <ul className="mt-3 mb-4 flex flex-wrap gap-1.5 text-[12px] font-medium text-zinc-700">
+          <li className="inline-flex items-center gap-1 rounded-lg bg-paper px-2 py-1"><Gauge className="size-3.5 text-muted" />{formatKm(vehicle.mileageKm)}</li>
+          <li className="inline-flex items-center gap-1 rounded-lg bg-paper px-2 py-1"><Fuel className="size-3.5 text-muted" />{FUEL_LABELS[vehicle.fuel]}</li>
+          <li className="inline-flex items-center gap-1 rounded-lg bg-paper px-2 py-1"><Settings2 className="size-3.5 text-muted" />{GEARBOX_LABELS[vehicle.gearbox]}</li>
+          <li className="inline-flex items-center gap-1 rounded-lg bg-paper px-2 py-1"><Users className="size-3.5 text-muted" />{vehicle.seats} pl.</li>
         </ul>
-        <div className="mt-auto pt-4">
+        <div className="mt-auto flex items-end justify-between gap-3 border-t border-line pt-3">
           <SalePrice vehicle={vehicle} />
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-ink text-white transition group-hover:bg-gold group-hover:text-ink" aria-hidden>
+            <ArrowUpRight className="size-4" />
+          </span>
         </div>
       </div>
     </article>
@@ -94,7 +97,7 @@ export function RentalCard({ vehicle, badge }: { vehicle: Vehicle; badge?: React
           </Link>
         </h3>
         <p className="text-sm text-muted">{vehicle.seats} places · {GEARBOX_LABELS[vehicle.gearbox]} · {FUEL_LABELS[vehicle.fuel]}{vehicle.airConditioning ? " · Clim" : ""}</p>
-        <div className="mt-auto flex items-end justify-between pt-4">
+        <div className="mt-4 flex items-end justify-between border-t border-line pt-3">
           <p>
             <span className="text-xs text-muted">à partir de</span>
             <span className="block text-lg font-extrabold text-ink">{formatXAF(r.dailyRate)}<span className="text-sm font-medium text-muted"> / jour</span></span>

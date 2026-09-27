@@ -595,11 +595,23 @@ function IncomingAlerts({ user }: { user: StaffUser }) {
 }
 
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
+  const pathname = usePathname();
+  // Icône et rubrique déduites du menu (cohérence sur toutes les pages)
+  const item = [...NAV].sort((a, b) => b.href.length - a.href.length).find((n) => (n.href === "/admin" ? pathname === "/admin" : pathname.startsWith(n.href)));
+  const Icon = item?.icon;
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">{title}</h1>
-        {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
+      <div className="flex items-start gap-3">
+        {Icon && (
+          <span className="mt-0.5 grid size-11 shrink-0 place-items-center rounded-2xl bg-white text-ink shadow-sm ring-1 ring-line">
+            <Icon className="size-5" />
+          </span>
+        )}
+        <div>
+          {item?.group && <p className="text-[11px] font-bold tracking-widest text-muted uppercase">{item.group}</p>}
+          <h1 className="text-2xl font-extrabold tracking-tight">{title}</h1>
+          {description && <p className="mt-0.5 max-w-3xl text-sm text-muted">{description}</p>}
+        </div>
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>

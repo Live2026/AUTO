@@ -1,3 +1,4 @@
+import { PageHero } from "@/components/public/page-hero";
 import type { Metadata } from "next";
 import { MyRequestsList } from "@/components/public/favorites-list";
 
@@ -5,10 +6,11 @@ export const metadata: Metadata = { title: "Mes demandes", robots: { index: fals
 
 export default function MyRequestsPage() {
   return (
-    <div className="container-page max-w-3xl py-10">
-      <h1 className="text-3xl font-extrabold tracking-tight">Mes demandes</h1>
-      <p className="mt-1 mb-6 text-muted">Retrouvez les demandes envoyées depuis ce téléphone et suivez leur avancement.</p>
+    <>
+    <PageHero tone="neutral" title="Mes demandes" description={"Retrouvez les demandes envoyées depuis ce téléphone et suivez leur avancement."} crumbs={[["Mes demandes"]]} narrow />
+    <div className="container-page max-w-3xl py-8">
       <MyRequestsList />
     </div>
+    </>
   );
 }

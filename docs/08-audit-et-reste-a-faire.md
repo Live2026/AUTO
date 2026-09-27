@@ -51,6 +51,12 @@ Légende : ✅ fait · 🟡 partiel · ⏭ reporté à une étape suivante (moti
 - **Défauts trouvés et corrigés par cette vérification** : erreur d'hydratation sur les pages Location (dates par défaut calculées au fuseau du serveur, et figées au jour de la compilation sur les fiches) ; titre principal manquant sur la page devis client ; ordre des titres sur /vehicules.
 - **Résultat** : lint ✅ · build 69 pages ✅ · **17 tests Playwright** ✅ · Lighthouse mobile : SEO 100, bonnes pratiques 100, accessibilité 98–100, performance 77–98, LCP 2,2–3,4 s (objectif 2,5 s atteint sur 4 pages sur 8).
 
+## Itération 3 (données mockées) — design ✅
+
+- **Site public** : illustrations de véhicules redessinées (carrosserie en dégradé, vitres avec reflets, jantes à 5 branches, ombre portée), bandeau d'en-tête commun avec fil d'Ariane sur 7 pages (véhicules, réalisations, prestations, contact, reprise, favoris, mes demandes), cartes véhicules plus lisibles (caractéristiques en pastilles, prix et flèche en pied de carte), filtres regroupés dans un panneau.
+- **Admin** : écran de connexion en deux colonnes avec présentation, en-têtes de page avec icône et section, cartes du kanban CRM avec couleur du pôle, initiales du responsable (ou « Non affectée ») et ancienneté.
+- **Résultat** : lint ✅ · build ✅ · **17 tests Playwright** ✅ · Lighthouse : SEO 100, bonnes pratiques 100, accessibilité 100, performance 83–99, LCP 2,2–3,4 s.
+
 ## Étapes restantes avant mise en production
 
 ### Étape 2 — Mise à niveau du schéma SQL (½ à 1 jour)

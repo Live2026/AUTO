@@ -13,11 +13,23 @@ import { can } from "@/lib/permissions";
 import type { RequestType } from "@/lib/types";
 import { formatPhone } from "@/lib/phone";
 import { Button, EmptyState, cn } from "../../ui";
-import { PageHeader, useStaff } from "../shell";
+import { PageHeader, initials, useStaff } from "../shell";
+import { POLE_SERIES } from "../charts";
 import { Loading, StatusBadge, Tabs, TypeBadge } from "../ui";
 import { NewRequestDialog } from "./new-request-dialog";
 
 type Group = "tous" | "a-traiter" | "en-cours" | "clotures";
+
+const POLE_COLOR: Record<RequestType, string> = {
+  sale: POLE_SERIES[0].color,
+  test_drive: POLE_SERIES[0].color,
+  appointment: POLE_SERIES[0].color,
+  trade_in: POLE_SERIES[0].color,
+  rental: POLE_SERIES[1].color,
+  event: POLE_SERIES[2].color,
+  callback: POLE_SERIES[3].color,
+  other: POLE_SERIES[3].color,
+};
 const GROUPS: Record<Group, (r: RequestRow) => boolean> = {
   tous: () => true,
   "a-traiter": (r) => r.status === "new" || r.status === "to_contact",
@@ -175,18 +187,34 @@ function RequestsBoard() {
             return (
               <div key={status} className="w-72 shrink-0">
                 <p className="mb-2 flex items-center justify-between px-1 text-sm font-bold">
-                  {REQUEST_STATUS_LABELS[status]} <span className="text-muted">{col.length}</span>
+                  {REQUEST_STATUS_LABELS[status]}
+                  <span className="grid min-w-6 place-items-center rounded-full bg-white px-1.5 text-xs text-muted ring-1 ring-line">{col.length}</span>
                 </p>
                 <div className="min-h-24 space-y-2 rounded-2xl bg-black/[0.03] p-2">
                   {col.map((r) => (
-                    <Link key={r.id} href={`/admin/crm/${r.id}`} className="block rounded-xl border border-line bg-white p-3 shadow-sm hover:border-ink/30">
-                      <p className="flex items-center justify-between text-xs">
+                    <Link
+                      key={r.id}
+                      href={`/admin/crm/${r.id}`}
+                      className="relative block overflow-hidden rounded-xl border border-line bg-white p-3 pl-4 shadow-sm transition hover:-translate-y-0.5 hover:border-ink/30 hover:shadow-md"
+                    >
+                      <span className="absolute inset-y-0 left-0 w-1" style={{ background: POLE_COLOR[r.type] }} aria-hidden />
+                      <p className="flex items-center justify-between gap-2 text-xs">
                         <span className="font-mono font-bold">{r.reference}</span>
                         <TypeBadge type={r.type} />
                       </p>
                       <p className="mt-1.5 text-sm font-semibold">{r.contact?.fullName}</p>
-                      <p className="truncate text-xs text-muted">{r.vehicle ? `${r.vehicle.brand} ${r.vehicle.model}` : r.message}</p>
-                      <p className="mt-1.5 text-[11px] text-muted">{staffById(r.assignedTo)?.fullName ?? "Non affectée"}</p>
+                      <p className="truncate text-xs text-muted">{r.vehicle ? `${r.vehicle.brand} ${r.vehicle.model}` : r.message ?? r.subject ?? "—"}</p>
+                      <div className="mt-2.5 flex items-center justify-between text-[11px] text-muted">
+                        <span className="inline-flex items-center gap-1.5">
+                          {staffById(r.assignedTo) ? (
+                            <span className="grid size-5 place-items-center rounded-full bg-ink text-[9px] font-bold text-white">{initials(staffById(r.assignedTo)!.fullName)}</span>
+                          ) : (
+                            <span className="rounded-full bg-rose-50 px-1.5 font-semibold text-rose-700">Non affectée</span>
+                          )}
+                          {staffById(r.assignedTo)?.fullName.split(" ")[0]}
+                        </span>
+                        <span>{now ? formatRelative(r.createdAt, now) : ""}</span>
+                      </div>
                     </Link>
                   ))}
                 </div>

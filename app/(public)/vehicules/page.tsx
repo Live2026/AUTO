@@ -1,3 +1,4 @@
+import { PageHero } from "@/components/public/page-hero";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { VehicleCard } from "@/components/public/vehicle-card";
@@ -32,10 +33,9 @@ export default async function VehiclesPage(props: PageProps<"/vehicules">) {
   const [vehicles, categories, brands] = await Promise.all([getSaleVehicles(filters), getVehicleCategories("sale"), getSaleBrands()]);
 
   return (
-    <div className="container-page py-8 sm:py-12">
-      <p className="eyebrow text-gold-deep">Vente automobile</p>
-      <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Nos véhicules</h1>
-      <p className="mt-2 max-w-2xl text-muted">Tous nos véhicules sont inspectés. Un doute, une question ? Un conseiller vous répond sur WhatsApp.</p>
+    <>
+    <PageHero tone="auto" eyebrow="Vente automobile" title="Nos véhicules" description={"Tous nos véhicules sont inspectés. Un doute, une question ? Un conseiller vous répond sur WhatsApp."} crumbs={[["Véhicules"]]} />
+    <div className="container-page py-8">
 
       <BannerStrip placement="vehicles" fallback={await getBanners()} className="mt-6" />
       <div className="mt-8">
@@ -58,5 +58,6 @@ export default async function VehiclesPage(props: PageProps<"/vehicules">) {
         />
       )}
     </div>
+    </>
   );
 }

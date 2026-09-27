@@ -1,3 +1,4 @@
+import { PageHero } from "@/components/public/page-hero";
 import type { Metadata } from "next";
 import { Wand2 } from "lucide-react";
 import { ServiceTile } from "@/components/public/service-grid";
@@ -13,10 +14,9 @@ export const metadata: Metadata = {
 export default async function ServicesPage() {
   const [categories, services] = await Promise.all([getServiceCategories(), getServices()]);
   return (
-    <div className="container-page py-10">
-      <p className="eyebrow text-event">Événementiel</p>
-      <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Nos prestations</h1>
-      <p className="mt-2 max-w-2xl text-muted">Combinez librement nos services. Les tarifs indiqués sont des points de départ : chaque devis est établi sur mesure.</p>
+    <>
+    <PageHero tone="event" eyebrow="Événementiel" title="Nos prestations" description={"Combinez librement nos services. Les tarifs indiqués sont des points de départ : chaque devis est établi sur mesure."} crumbs={[["Événementiel", "/evenementiel"], ["Prestations"]]} />
+    <div className="container-page py-8">
       <div className="mt-10 space-y-10">
         {categories.map((c) => {
           const list = services.filter((s) => s.categoryId === c.id);
@@ -38,5 +38,6 @@ export default async function ServicesPage() {
         <LinkButton href="/evenementiel/creer" variant="gold" size="lg" className="mt-4"><Wand2 className="size-5" /> Demander mon devis</LinkButton>
       </div>
     </div>
+    </>
   );
 }

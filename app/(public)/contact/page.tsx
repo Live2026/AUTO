@@ -1,3 +1,4 @@
+import { PageHero } from "@/components/public/page-hero";
 import type { Metadata } from "next";
 import { Clock, Mail, MapPin } from "lucide-react";
 import { CallButton, WhatsAppButton } from "@/components/public/contact-links";
@@ -21,10 +22,9 @@ export default async function ContactPage(props: PageProps<"/contact">) {
     ["Événementiel", "event"],
   ] as const;
   return (
-    <div className="container-page py-10">
-      <p className="eyebrow text-gold-deep">Contact</p>
-      <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Parlons de votre projet</h1>
-      <p className="mt-2 max-w-2xl text-muted">Le plus rapide : WhatsApp. Vous pouvez aussi nous appeler ou laisser un message, un conseiller vous rappelle.</p>
+    <>
+    <PageHero tone="neutral" eyebrow="Contact" title="Parlons de votre projet" description={"Le plus rapide : WhatsApp. Vous pouvez aussi nous appeler ou laisser un message, un conseiller vous rappelle."} crumbs={[["Contact"]]} />
+    <div className="container-page py-8">
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1.1fr]">
         <div className="space-y-4">
           {poles.map(([label, pole]) => (
@@ -75,5 +75,6 @@ export default async function ContactPage(props: PageProps<"/contact">) {
         </div>
       </div>
     </div>
+    </>
   );
 }
