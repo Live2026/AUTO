@@ -17,6 +17,26 @@ async function login(page: Page, user?: string) {
   await expect(page).toHaveURL(/\/admin$/);
 }
 
+test("connexion : e-mail, erreur, affichage du mot de passe, mot de passe oublié", async ({ page }) => {
+  await page.goto("/admin/login");
+  await expect(page.getByLabel("E-mail professionnel")).toHaveValue("admin@bryan.cg");
+  await page.getByLabel("Mot de passe").fill("faux");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "E-mail ou mot de passe incorrect." })).toBeVisible();
+  await page.getByRole("button", { name: "Afficher la saisie" }).click();
+  await expect(page.getByLabel("Mot de passe")).toHaveAttribute("type", "text");
+
+  await page.getByRole("button", { name: "Mot de passe oublié ?" }).click();
+  await page.getByRole("button", { name: "Envoyer le lien" }).click();
+  await expect(page.getByRole("heading", { name: "Vérifiez vos e-mails" })).toBeVisible();
+  await page.getByRole("button", { name: "Retour à la connexion" }).click();
+
+  await page.getByLabel("E-mail professionnel").fill("AUTO@bryan.cg");
+  await page.getByLabel("Mot de passe").fill("demo");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Christelle Moukala");
+});
+
 test("tableau de bord : nom et rôle de l'administrateur en haut, boîte de réception", async ({ page }) => {
   await login(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Bryan Nkounkou");
