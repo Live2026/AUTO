@@ -10,7 +10,7 @@
 | Données admin | TanStack Query | Cache, rafraîchissement, mutations optimistes |
 | Backend | **Supabase** : Postgres, Auth, Storage, Realtime, Edge Functions | Pas de serveur à maintenir ; RLS pour les permissions ; contraintes SQL anti-conflit |
 | Stockage local | **IndexedDB via Dexie.js** | API simple, requêtes indexées, `useLiveQuery` pour React |
-| Service worker | **Serwist** (`@serwist/next`) | Successeur maintenu de next-pwa ; precache + stratégies runtime |
+| Service worker | `public/sw.js` écrit à la main (MVP) — Serwist envisageable plus tard | Next 16 compile avec Turbopack ; un SW sans plugin reste simple et maîtrisé |
 | Anti-spam | Cloudflare Turnstile | Captcha invisible, gratuit |
 | E-mails | Resend (ou SMTP du client) | Notifications internes + envoi de lien de devis |
 | Push | Web Push (VAPID) depuis une Edge Function | Alerte « nouvelle demande » sur les téléphones du personnel |
@@ -77,7 +77,7 @@ Postgres : submit_public_request(payload)  → upsert contact, crée la demande,
 
 Vider les stores admin à la déconnexion (données personnelles sur appareil partagé).
 
-## 5. Service worker (Serwist)
+## 5. Service worker (`public/sw.js`)
 
 | Ressource | Stratégie |
 |---|---|
